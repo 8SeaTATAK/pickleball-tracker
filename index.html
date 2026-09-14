@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ryde Pickleball Openings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+:root{
+  --paper:#f6f5f1; --card:#fdfcfa; --ink:#1c211c; --muted:#71776f; --line:#e2e0d8;
+  --turf:#216b43; --clay:#b95c30;
+  --free-bg:#d3e9f6; --free-br:#7bb4d6; --free-tx:#155574;
+  --un-bg:#eceae4; --un-tx:#a7aca2; --un-br:#e2e0d8;
+  --mine-bg:#dcefe1; --mine-br:#3f9c68; --mine-tx:#1c6b3f;
+  --head:#eef4f0;
+}
+@media (prefers-color-scheme:dark){
+ :root{
+  --paper:#141714; --card:#1a1e1a; --ink:#e9ebe6; --muted:#99a094; --line:#2c312b;
+  --turf:#7fd0a1; --clay:#e08a5c;
+  --free-bg:#173442; --free-br:#2f6d8c; --free-tx:#8fcdec;
+  --un-bg:#20241f; --un-tx:#5c635a; --un-br:#2c312b;
+  --mine-bg:#183a27; --mine-br:#3f9c68; --mine-tx:#8ee0ab;
+  --head:#1e2620;
+ }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.4;-webkit-font-smoothing:antialiased}
+.wrap{max-width:100%;margin:0 auto;padding:28px 22px 70px}
+.eyebrow{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.16em;
+  font-size:12px;font-weight:600;color:var(--turf)}
+h1{font-family:Oswald,sans-serif;font-weight:700;font-size:29px;margin:.2em 0 .1em;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:14px;margin:0}
+.legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:14px 0 4px;font-size:12.5px;color:var(--muted)}
+.legend .k{display:inline-flex;align-items:center;gap:7px}
+.legend .box{width:42px;height:20px;border-radius:5px;display:inline-flex;align-items:center;
+  justify-content:center;font-size:10px;font-variant-numeric:tabular-nums;border:1px solid}
+.legend .box.free{background:var(--free-bg);border-color:var(--free-br);color:var(--free-tx)}
+.legend .box.un{background:var(--un-bg);border-color:var(--un-br);color:var(--un-tx)}
+.legend .box.mine{background:var(--mine-bg);border-color:var(--mine-br);color:var(--mine-tx);font-weight:600}
+.legend .hint{margin-left:auto;font-style:italic}
+
+.board{overflow:auto;margin-top:12px;border:1px solid var(--line);border-radius:12px;max-height:82vh}
+table{border-collapse:separate;border-spacing:0;background:var(--card)}
+th,td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);vertical-align:top}
+thead th{position:sticky;top:0;z-index:3;background:var(--head);padding:0}
+thead th.corner{left:0;z-index:4}
+.datebtn{display:flex;flex-direction:column;align-items:center;gap:1px;width:100%;
+  border:0;background:transparent;cursor:pointer;padding:9px 10px 8px;color:inherit;font:inherit;
+  border-bottom:3px solid transparent;transition:.15s}
+.datebtn:hover{background:var(--free-bg)}
+.datebtn.active{border-bottom-color:var(--turf);background:var(--free-bg)}
+.datebtn .dd{font-family:Oswald,sans-serif;font-weight:600;font-size:15px;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.datebtn .dw{font-size:11px;color:var(--muted)}
+.datebtn .dw.we{color:var(--clay);font-weight:600}
+.datebtn .dc{font-size:10px;color:var(--turf);font-family:Oswald,sans-serif;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+.datebtn.active .dc::after{content:' · 仅可订'}
+
+tbody th.court{position:sticky;left:0;z-index:2;background:var(--card);text-align:left;
+  font-family:Oswald,sans-serif;font-weight:600;font-size:13px;padding:8px 14px 8px 12px;white-space:nowrap;
+  border-right:2px solid var(--line)}
+tbody th.court .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:middle}
+.dot.p{background:var(--clay)} .dot.s{background:var(--turf)}
+tbody tr.tierrow th{position:sticky;left:0;background:var(--head);font-family:Oswald,sans-serif;
+  text-transform:uppercase;letter-spacing:.1em;font-size:10.5px;font-weight:600;color:var(--muted);
+  padding:5px 12px;z-index:2}
+tbody tr.tierrow td{background:var(--head)}
+
+td.cell{padding:6px;min-width:172px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{width:48px;height:22px;border-radius:5px;border:1px solid;display:inline-flex;
+  align-items:center;justify-content:center;font-size:10.5px;font-variant-numeric:tabular-nums;font-weight:500}
+.chip.free{background:var(--free-bg);border-color:var(--free-br);color:var(--free-tx)}
+.chip.un{background:var(--un-bg);border-color:var(--un-br);color:var(--un-tx)}
+.chip.mine{background:var(--mine-bg);border-color:var(--mine-br);color:var(--mine-tx);font-weight:600;
+  box-shadow:0 0 0 1px var(--mine-br) inset}
+td.cell.freeonly .chip.un,td.cell.freeonly .chip.mine{display:none}
+td.cell.freeonly .chips:empty::after,td.cell.freeonly.empty::after{content:'—';color:var(--muted);font-size:12px}
+footer{margin-top:22px;font-size:12px;color:var(--muted)}
+footer a{color:var(--turf)}
+.loading,.err{padding:40px 0;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Tennis World · North Ryde</div>
+  <h1>Pickleball 空场汇总</h1>
+  <p class="sub">全 16 片场 · 30 分钟一格 · 悉尼时间(AEST) · 工作日 19:00 后 / 周末 14:00 后 · 每 30 分钟自动刷新</p>
+  <div class="legend">
+    <span class="k"><span class="box free">19:00</span> 可预订</span>
+    <span class="k"><span class="box un">19:30</span> 已订/不可用</span>
+    <span class="k"><span class="box mine">20:00</span> 我的预订</span>
+    <span class="hint">点击顶部日期 → 该列只显示可预订</span>
+  </div>
+  <div id="board" class="board"><div class="loading">加载中…</div></div>
+  <footer id="footer"></footer>
+</div>
+
+<script>
+const COURTS=[
+ {n:'Court 1',k:'Ct1',t:'p'},{n:'Court 2',k:'Ct2',t:'p'},{n:'Court 3',k:'Ct3',t:'p'},{n:'Court 4',k:'Ct4',t:'p'},
+ {n:'Court 5',k:'Ct5',t:'s'},{n:'Court 6',k:'Ct6',t:'s'},{n:'Court 7',k:'Ct7',t:'s'},{n:'Court 8',k:'Ct8',t:'s'},
+ {n:'Court 9',k:'Ct9',t:'s'},{n:'Court 10',k:'Ct10',t:'s'},{n:'Court 11',k:'Ct11',t:'s'},{n:'Court 12',k:'Ct12',t:'s'},
+ {n:'Court 13',k:'Ct13',t:'s'},{n:'Court 14',k:'Ct14',t:'s'},{n:'Court 15',k:'Ct15',t:'s'},{n:'Court 16',k:'Ct16',t:'s'}
+];
+const DOWCN=['周日','周一','周二','周三','周四','周五','周六'];
+const WK=['19:00','19:30','20:00','20:30','21:00','21:30','22:00'];
+const WE=['14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00'];
+
+async function load(){
+  const bust = '?t=' + Date.now();
+  const [availRes, mineRes] = await Promise.all([
+    fetch('data/availability.json'+bust),
+    fetch('data/mine.json'+bust).catch(()=>null)
+  ]);
+  if(!availRes.ok) throw new Error('availability.json fetch failed');
+  const avail = await availRes.json();
+  let mine = {};
+  if(mineRes && mineRes.ok) mine = await mineRes.json();
+  render(avail.data||{}, mine, avail.generatedAt);
+}
+
+function render(DATA, MINE, generatedAt){
+  const dates=Object.keys(DATA).sort();
+  const meta=dates.map(date=>{
+    const d=new Date(date+'T00:00:00');const dow=d.getDay();const weekend=(dow===0||dow===6);
+    let total=0;COURTS.forEach(c=>total+=(DATA[date][c.k]||[]).length);
+    return {date,dow,weekend,slots:weekend?WE:WK,total,mo:+date.slice(5,7),da:+date.slice(8)};
+  });
+
+  const board=document.getElementById('board');
+  let h='<table><thead><tr><th class="corner" rowspan="1"></th>';
+  meta.forEach((m,i)=>{
+    h+=`<th><button class="datebtn" data-col="${i}">
+        <span class="dd">${m.mo}/${m.da}</span>
+        <span class="dw ${m.weekend?'we':''}">${DOWCN[m.dow]}</span>
+        <span class="dc">${m.total} 空</span></button></th>`;
+  });
+  h+='</tr></thead><tbody>';
+  let lastTier='';
+  COURTS.forEach(c=>{
+    if(c.t!==lastTier){
+      const lbl=c.t==='p'?'Premium 专用场':'Standard 多线场';
+      h+=`<tr class="tierrow"><th>${lbl}</th>${meta.map(()=>'<td></td>').join('')}</tr>`;
+      lastTier=c.t;
+    }
+    h+=`<tr><th class="court"><span class="dot ${c.t}"></span>${c.n}</th>`;
+    meta.forEach((m,i)=>{
+      const free=new Set(DATA[m.date][c.k]||[]);
+      const mineSet=new Set(((MINE[m.date]||{})[c.k])||[]);
+      let chips='';
+      m.slots.forEach(t=>{
+        const cls = mineSet.has(t) ? 'mine' : (free.has(t) ? 'free' : 'un');
+        chips+=`<span class="chip ${cls}">${t}</span>`;
+      });
+      h+=`<td class="cell c${i}"><div class="chips">${chips}</div></td>`;
+    });
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  board.innerHTML=h;
+
+  document.querySelectorAll('.datebtn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const i=btn.dataset.col;
+      btn.classList.toggle('active');
+      const on=btn.classList.contains('active');
+      document.querySelectorAll('td.cell.c'+i).forEach(td=>{
+        td.classList.toggle('freeonly',on);
+        const anyFree=td.querySelector('.chip.free');
+        td.classList.toggle('empty', on && !anyFree);
+      });
+    });
+  });
+
+  const footer=document.getElementById('footer');
+  const stamp = generatedAt ? new Date(generatedAt).toLocaleString('zh-CN',{timeZone:'Australia/Sydney'}) : '未知';
+  footer.innerHTML = `快照:${stamp}(悉尼时间)· 每 30 分钟自动刷新 · 来源 <a href="https://www.tennisworldonline.com.au/bookacourt/">tennisworldonline.com.au</a> · 空场实时变动,预订前请再确认。`;
+}
+
+load().catch(e=>{
+  document.getElementById('board').innerHTML = `<div class="err">数据加载失败:${e.message}</div>`;
+});
+</script>
+</body>
+</html>
