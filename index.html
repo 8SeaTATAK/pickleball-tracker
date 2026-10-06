@@ -79,6 +79,20 @@ td.cell{padding:6px;min-width:172px}
   box-shadow:0 0 0 1px var(--mine-br) inset}
 td.cell.freeonly .chip.un,td.cell.freeonly .chip.mine{display:none}
 td.cell.freeonly .chips:empty::after,td.cell.freeonly.empty::after{content:'—';color:var(--muted);font-size:12px}
+.stats{margin-top:34px}
+.stats h2{font-family:Oswald,sans-serif;font-weight:700;font-size:22px;margin:.2em 0 .1em}
+.cards{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 18px;min-width:130px}
+.card b{display:block;font-family:Oswald,sans-serif;font-size:28px;color:var(--turf);font-variant-numeric:tabular-nums}
+.card span{font-size:12px;color:var(--muted)}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.panel h3{margin:0 0 10px;font-family:Oswald,sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.bar{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:12.5px}
+.bar .l{width:54px;flex:none;color:var(--ink)}
+.bar .t{flex:1;background:var(--un-bg);border-radius:4px;height:14px;overflow:hidden}
+.bar .t i{display:block;height:100%;background:var(--mine-br);border-radius:4px}
+.bar .v{width:44px;flex:none;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
 footer{margin-top:22px;font-size:12px;color:var(--muted)}
 footer a{color:var(--turf)}
 .loading,.err{padding:40px 0;text-align:center;color:var(--muted)}
@@ -96,6 +110,7 @@ footer a{color:var(--turf)}
     <span class="hint">点击顶部日期 → 该列只显示可预订</span>
   </div>
   <div id="board" class="board"><div class="loading">加载中…</div></div>
+  <section class="stats" id="stats"></section>
   <footer id="footer"></footer>
 </div>
 
@@ -112,15 +127,57 @@ const WE=['14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00
 
 async function load(){
   const bust = '?t=' + Date.now();
-  const [availRes, mineRes] = await Promise.all([
+  const [availRes, mineRes, histRes] = await Promise.all([
     fetch('data/availability.json'+bust),
-    fetch('data/mine.json'+bust).catch(()=>null)
+    fetch('data/mine.json'+bust).catch(()=>null),
+    fetch('data/history.json'+bust).catch(()=>null)
   ]);
   if(!availRes.ok) throw new Error('availability.json fetch failed');
   const avail = await availRes.json();
   let mine = {};
   if(mineRes && mineRes.ok) mine = await mineRes.json();
   render(avail.data||{}, mine, avail.generatedAt);
+  let hist = {};
+  if(histRes && histRes.ok) hist = await histRes.json();
+  renderStats(hist, mine);
+}
+
+function renderStats(HIST, MINE){
+  const sum=(m)=>{ // m: {date:{court:[slots]}} -> aggregates (1 slot = 0.5h)
+    const r={slots:0,sessions:0,days:0,dow:Array(7).fill(0),court:{},week:{}};
+    for(const [date,cs] of Object.entries(m)){
+      const n=Object.values(cs).reduce((a,v)=>a+v.length,0); if(!n) continue;
+      r.days++; r.slots+=n; r.sessions+=Object.keys(cs).length;
+      const d=new Date(date+'T00:00:00'); r.dow[d.getDay()]+=n/2;
+      for(const [c,v] of Object.entries(cs)) r.court[c]=(r.court[c]||0)+v.length/2;
+      const mon=new Date(d); mon.setDate(d.getDate()-((d.getDay()+6)%7));
+      const wk=`${mon.getMonth()+1}/${mon.getDate()}`;r.week[wk]=(r.week[wk]||0)+n/2;
+    }
+    return r;
+  };
+  const past=sum(HIST), up=sum(MINE);
+  const bars=(rows,unit)=>{const mx=Math.max(1,...rows.map(r=>r[1]));
+    return rows.map(([l,v])=>`<div class="bar"><span class="l">${l}</span><span class="t"><i style="width:${v/mx*100}%"></i></span><span class="v">${v}${unit}</span></div>`).join('')||'<div class="sub">暂无数据</div>';};
+  const dowRows=[1,2,3,4,5,6,0].map(i=>[DOWCN[i],past.dow[i]]);
+  const courtRows=Object.entries(past.court).sort((a,b)=>+a[0].slice(2)-+b[0].slice(2)).map(([c,v])=>['Ct '+c.slice(2),v]);
+  const weekRows=Object.entries(past.week);
+  const el=document.getElementById('stats');
+  const dates=Object.keys(HIST).sort();
+  const since=dates.length?dates[0].slice(5).replace('-','/'):'';
+  el.innerHTML=`<div class="eyebrow">My Bookings</div><h2>我的订场统计</h2>
+   <p class="sub">已打过的场次(自 ${since} 起,每次刷新自动归档过期订单)· 取消的不计入</p>
+   <div class="cards">
+    <div class="card"><b>${past.days}</b><span>已订天数</span></div>
+    <div class="card"><b>${past.sessions}</b><span>场地·次(court-sessions)</span></div>
+    <div class="card"><b>${past.slots/2}h</b><span>场地总小时</span></div>
+    <div class="card"><b>${past.days?(past.slots/2/past.days).toFixed(1):0}h</b><span>平均每天</span></div>
+    <div class="card"><b>${up.sessions}</b><span>待打(今日起)· ${up.slots/2}h</span></div>
+   </div>
+   <div class="charts">
+    <div class="panel"><h3>按星期(场地小时)</h3>${bars(dowRows,'h')}</div>
+    <div class="panel"><h3>按场地(小时)</h3>${bars(courtRows,'h')}</div>
+    <div class="panel"><h3>按周(周一起,小时)</h3>${bars(weekRows,'h')}</div>
+   </div>`;
 }
 
 function render(DATA, MINE, generatedAt){

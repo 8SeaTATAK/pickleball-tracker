@@ -99,6 +99,14 @@ async function main() {
     const mine = JSON.parse(mineRaw);
     const pruned = Object.fromEntries(Object.entries(mine).filter(([date]) => date >= today));
     if (JSON.stringify(pruned) !== JSON.stringify(mine)) {
+      // Archive the past dates into data/history.json (feeds the stats section) before dropping them.
+      let history = {};
+      try { history = JSON.parse(await fs.readFile("data/history.json", "utf8")); } catch {}
+      for (const [date, courts] of Object.entries(mine)) {
+        if (date < today && Object.keys(courts).length) history[date] = courts;
+      }
+      const sorted = Object.fromEntries(Object.entries(history).sort(([a], [b]) => a.localeCompare(b)));
+      await fs.writeFile("data/history.json", JSON.stringify(sorted, null, 1) + "\n");
       await fs.writeFile("data/mine.json", JSON.stringify(pruned, null, 2) + "\n");
       console.log("Pruned past dates from data/mine.json.");
     }
