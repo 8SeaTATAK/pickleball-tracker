@@ -145,6 +145,20 @@ footer a{color:var(--turf)}
 .mct em{font-style:normal;font-family:Inter,sans-serif;font-weight:400;font-size:11.5px;
   color:var(--muted);margin-left:7px}
 .mempty{padding:26px 0;text-align:center;color:var(--muted);font-size:13px}
+
+/* ---------- edit mode (only visible once a token is stored) ---------- */
+#editbar{display:none;align-items:center;gap:9px;flex-wrap:wrap;margin:10px 0 2px;font-size:12.5px}
+#editbar.show{display:flex}
+#editbar button{border:1px solid var(--line);background:var(--card);color:var(--ink);
+  border-radius:999px;padding:6px 14px;font:inherit;font-size:12.5px;cursor:pointer}
+#editbar button.go{background:var(--turf);border-color:var(--turf);color:#fff;font-weight:600}
+#editbar button:disabled{opacity:.45;cursor:default}
+#editbar .note{color:var(--muted)}
+#editbar .note.warn{color:var(--clay)}
+body.editing .chip{cursor:pointer}
+body.editing td.cell.freeonly .chip{display:inline-flex}
+body.editing .chip.free,body.editing .chip.un{border-style:dashed}
+body.editing .chip:active{transform:scale(.94)}
 </style>
 </head>
 <body>
@@ -158,6 +172,7 @@ footer a{color:var(--turf)}
     <span class="k"><span class="box mine">20:00</span> 我的预订</span>
     <span class="hint">点击顶部日期 → 该列只显示可预订</span>
   </div>
+  <div id="editbar"></div>
   <div id="board" class="board"><div class="loading">加载中…</div></div>
   <div id="m" class="m"><div class="loading">加载中…</div></div>
   <section class="stats" id="stats"></section>
@@ -175,6 +190,8 @@ const DOWCN=['周日','周一','周二','周三','周四','周五','周六'];
 const WK=['19:00','19:30','20:00','20:30','21:00','21:30'];
 const WE=['14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30'];
 
+// Last payload rendered, so edit mode can re-render without refetching.
+let LAST=null;
 async function load(){
   const bust = '?t=' + Date.now();
   const [availRes, mineRes, histRes] = await Promise.all([
@@ -186,10 +203,12 @@ async function load(){
   const avail = await availRes.json();
   let mine = {};
   if(mineRes && mineRes.ok) mine = await mineRes.json();
-  render(avail.data||{}, mine, avail.generatedAt);
+  LAST={DATA:avail.data||{}, MINE:mine, gen:avail.generatedAt, HIST:LAST&&LAST.HIST};
+  render(LAST.DATA, LAST.MINE, LAST.gen);
   let hist = {};
   if(histRes && histRes.ok) hist = await histRes.json();
-  renderStats(hist, mine);
+  LAST.HIST=hist;
+  renderStats(hist, LAST.MINE);
 }
 
 function renderStats(HIST, MINE){
@@ -261,7 +280,7 @@ function render(DATA, MINE, generatedAt){
       let chips='';
       m.slots.forEach(t=>{
         const cls = mineSet.has(t) ? 'mine' : (free.has(t) ? 'free' : 'un');
-        chips+=`<span class="chip ${cls}">${t}</span>`;
+        chips+=`<span class="chip ${cls}" data-d="${m.date}" data-c="${c.k}" data-t="${t}">${t}</span>`;
       });
       h+=`<td class="cell c${i}"><div class="chips">${chips}</div></td>`;
     });
@@ -270,6 +289,7 @@ function render(DATA, MINE, generatedAt){
   h+='</tbody></table>';
   board.innerHTML=h;
   renderMobile(DATA, MINE, meta);
+  renderEditBar();
 
   document.querySelectorAll('.datebtn').forEach(btn=>{
     btn.addEventListener('click',()=>{
@@ -307,11 +327,11 @@ function renderMobile(DATA, MINE, meta){
   const rows=COURTS.map(c=>{
     const free=new Set(DATA[m.date][c.k]||[]);
     const mineSet=new Set(((MINE[m.date]||{})[c.k])||[]);
-    if(MSTATE.freeOnly && !free.size && !mineSet.size) return '';
+    if(FO() && !free.size && !mineSet.size) return '';
     const chips=m.slots.map(t=>{
       const cls=mineSet.has(t)?'mine':(free.has(t)?'free':'un');
-      if(MSTATE.freeOnly && cls==='un') return '';
-      return `<span class="chip ${cls}">${t}</span>`;
+      if(FO() && cls==='un') return '';
+      return `<span class="chip ${cls}" data-d="${m.date}" data-c="${c.k}" data-t="${t}">${t}</span>`;
     }).join('');
     const tag=free.size?`${free.size*0.5}h 可订`:(mineSet.size?'我的预订':'已满');
     return `<div class="mrow"><div class="mct"><span class="dot ${c.t}"></span>${c.n}<em>${tag}</em></div>
@@ -319,7 +339,7 @@ function renderMobile(DATA, MINE, meta){
   }).join('');
 
   host.innerHTML=`<div class="mdates">${strip}</div>
-    <div class="mbar"><button id="mOnly" class="${MSTATE.freeOnly?'on':''}">只看可订</button>
+    <div class="mbar"><button id="mOnly" class="${FO()?'on':''}">只看可订</button>
       <span>${m.total} 个空格 · ${m.total*0.5}h</span></div>
     <div class="mlist">${rows||'<div class="mempty">这天没有空场</div>'}</div>`;
 
@@ -333,6 +353,127 @@ function renderMobile(DATA, MINE, meta){
 
 // Lets the page be added to the home screen and still open without signal.
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// ---------------------------------------------------------------------------
+// Edit mode: tap a slot to mark it as Victor's booking, then commit
+// data/mine.json straight to GitHub. The token is entered once per device and
+// lives only in that browser's localStorage — it is never part of this repo,
+// so anyone else opening the page gets the read-only view.
+// ---------------------------------------------------------------------------
+const REPO='8SeaTATAK/pickleball-tracker';
+const MINE_PATH='data/mine.json';
+const EDIT={on:false,dirty:false,busy:false,msg:'',token:localStorage.getItem('pb_token')||''};
+const FO=()=>MSTATE.freeOnly && !EDIT.on;
+
+function rerender(){
+  const y=scrollY;
+  render(LAST.DATA, LAST.MINE, LAST.gen);
+  if(LAST.HIST) renderStats(LAST.HIST, LAST.MINE);
+  scrollTo(0,y);
+}
+
+function sydneyToday(){
+  return new Date().toLocaleDateString('en-CA',{timeZone:'Australia/Sydney'});
+}
+
+// Same discipline as the scraper: never let a past date linger.
+function cleanMine(src){
+  const today=sydneyToday(), out={};
+  for(const d of Object.keys(src).sort()){
+    if(d<today) continue;
+    const courts={};
+    for(const [c,v] of Object.entries(src[d])) if(v && v.length) courts[c]=[...v].sort();
+    if(Object.keys(courts).length) out[d]=courts;
+  }
+  return out;
+}
+
+function renderEditBar(){
+  const bar=document.getElementById('editbar');
+  if(!bar) return;
+  const show=!!EDIT.token;
+  bar.classList.toggle('show',show);
+  document.body.classList.toggle('editing',EDIT.on);
+  if(!show){bar.innerHTML='';return;}
+  if(!EDIT.on){
+    bar.innerHTML=`<button id="eOn">✎ 编辑我的预订</button>
+      <span class="note">${EDIT.msg||''}</span>`;
+    document.getElementById('eOn').onclick=()=>{EDIT.on=true;EDIT.msg='';rerender();};
+    return;
+  }
+  bar.innerHTML=`<span class="note">点时间格子标记 / 取消我的预订</span>
+    <button id="eSave" class="go" ${EDIT.dirty&&!EDIT.busy?'':'disabled'}>${EDIT.busy?'保存中…':'保存到 GitHub'}</button>
+    <button id="eOff">退出编辑</button>
+    <span class="note${EDIT.msg.startsWith('✗')?' warn':''}">${EDIT.msg}</span>`;
+  document.getElementById('eSave').onclick=saveMine;
+  document.getElementById('eOff').onclick=()=>{
+    if(EDIT.dirty && !confirm('有未保存的改动,确定退出?')) return;
+    EDIT.on=false;EDIT.dirty=false;EDIT.msg='';
+    load().catch(()=>{});
+  };
+}
+
+document.addEventListener('click',(e)=>{
+  if(!EDIT.on || EDIT.busy) return;
+  const chip=e.target.closest('.chip[data-d]');
+  if(!chip) return;
+  const {d,c,t}=chip.dataset;
+  const m=LAST.MINE;
+  m[d]=m[d]||{};
+  const slots=new Set(m[d][c]||[]);
+  slots.has(t) ? slots.delete(t) : slots.add(t);
+  m[d][c]=[...slots].sort();
+  if(!m[d][c].length) delete m[d][c];
+  if(!Object.keys(m[d]).length) delete m[d];
+  EDIT.dirty=true;EDIT.msg='';
+  rerender();
+});
+
+async function saveMine(){
+  EDIT.busy=true;EDIT.msg='';renderEditBar();
+  const api=`https://api.github.com/repos/${REPO}/contents/${MINE_PATH}`;
+  const headers={Authorization:'Bearer '+EDIT.token,Accept:'application/vnd.github+json'};
+  const text=JSON.stringify(cleanMine(LAST.MINE),null,2)+'\n';
+  const content=btoa(String.fromCharCode(...new TextEncoder().encode(text)));
+  try{
+    let saved=false;
+    for(let attempt=0;attempt<2 && !saved;attempt++){
+      const cur=await fetch(`${api}?ref=main&t=${Date.now()}`,{headers,cache:'no-store'});
+      if(cur.status===401||cur.status===403) throw new Error('令牌无效或权限不足');
+      if(!cur.ok) throw new Error('读取失败 '+cur.status);
+      const {sha}=await cur.json();
+      const res=await fetch(api,{method:'PUT',
+        headers:{...headers,'Content-Type':'application/json'},
+        body:JSON.stringify({message:'Update my bookings from phone',content,sha,branch:'main'})});
+      if(res.ok){saved=true;break;}
+      if(res.status!==409) throw new Error('保存失败 '+res.status);
+    }
+    if(!saved) throw new Error('保存冲突,请再试一次');
+    EDIT.dirty=false;
+    EDIT.msg='✓ 已保存 · 页面约 1 分钟后更新';
+  }catch(err){
+    EDIT.msg='✗ '+err.message;
+  }finally{
+    EDIT.busy=false;renderEditBar();
+  }
+}
+
+function initEdit(){
+  if(location.hash==='#edit'){
+    history.replaceState(null,'',location.pathname+location.search);
+    if(!EDIT.token){
+      const t=prompt('粘贴 GitHub fine-grained 令牌(只给本仓库 Contents 读写权限):','');
+      if(t && t.trim()){EDIT.token=t.trim();localStorage.setItem('pb_token',EDIT.token);}
+    }
+    if(EDIT.token) EDIT.on=true;
+  }
+  if(location.hash==='#forget'){
+    localStorage.removeItem('pb_token');EDIT.token='';EDIT.on=false;
+    history.replaceState(null,'',location.pathname+location.search);
+    alert('已清除这台设备上的令牌。');
+  }
+}
+initEdit();
 
 load().catch(e=>{
   document.getElementById('board').innerHTML = `<div class="err">数据加载失败:${e.message}</div>`;
