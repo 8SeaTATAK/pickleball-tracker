@@ -4,6 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ryde Pickleball Openings</title>
+<meta name="description" content="Tennis World North Ryde 全 16 片场 pickleball 空场汇总,每 30 分钟自动刷新。">
+<meta name="theme-color" content="#216b43">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pickleball">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Ryde Pickleball 空场">
+<meta property="og:description" content="Tennis World North Ryde 全 16 片场,每 30 分钟自动刷新">
+<meta property="og:image" content="https://8seatatak.github.io/pickleball-tracker/icon-512.png">
+<meta property="og:url" content="https://8seatatak.github.io/pickleball-tracker/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
@@ -96,6 +108,43 @@ td.cell.freeonly .chips:empty::after,td.cell.freeonly.empty::after{content:'—'
 footer{margin-top:22px;font-size:12px;color:var(--muted)}
 footer a{color:var(--turf)}
 .loading,.err{padding:40px 0;text-align:center;color:var(--muted)}
+
+/* ---------- phone layout: date strip + one court per row ---------- */
+.m{display:none}
+@media (max-width:760px){
+  .wrap{padding:20px 16px 56px}
+  h1{font-size:24px}
+  .board,.legend .hint{display:none}
+  .m{display:block}
+  .cards{gap:8px}
+  .card{flex:1 1 calc(50% - 4px);min-width:0;padding:10px 12px}
+  .card b{font-size:22px}
+  .stats h2{font-size:19px}
+}
+.mdates{display:flex;gap:7px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none;
+  position:sticky;top:0;background:var(--paper);z-index:5}
+.mdates::-webkit-scrollbar{display:none}
+.mdate{flex:none;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:56px;
+  border:1px solid var(--line);background:var(--card);border-radius:10px;
+  padding:7px 11px;cursor:pointer;color:inherit;font:inherit}
+.mdate .dd{font-family:Oswald,sans-serif;font-weight:600;font-size:15px;font-variant-numeric:tabular-nums}
+.mdate .dw{font-size:10.5px;color:var(--muted)}
+.mdate .dw.we{color:var(--clay);font-weight:600}
+.mdate .dc{font-size:10px;font-family:Oswald,sans-serif;font-weight:600;color:var(--turf);
+  font-variant-numeric:tabular-nums}
+.mdate.on{background:var(--turf);border-color:var(--turf)}
+.mdate.on .dd,.mdate.on .dw,.mdate.on .dc{color:#fff}
+.mbar{display:flex;align-items:center;gap:10px;margin:2px 0 8px;font-size:12px;color:var(--muted)}
+.mbar button{border:1px solid var(--line);background:var(--card);color:var(--muted);
+  border-radius:999px;padding:5px 13px;font:inherit;font-size:12px;cursor:pointer}
+.mbar button.on{background:var(--mine-bg);border-color:var(--mine-br);color:var(--mine-tx);font-weight:600}
+.mlist{border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
+.mrow{padding:10px 13px;border-bottom:1px solid var(--line)}
+.mrow:last-child{border-bottom:0}
+.mct{font-family:Oswald,sans-serif;font-weight:600;font-size:13.5px;margin-bottom:7px}
+.mct em{font-style:normal;font-family:Inter,sans-serif;font-weight:400;font-size:11.5px;
+  color:var(--muted);margin-left:7px}
+.mempty{padding:26px 0;text-align:center;color:var(--muted);font-size:13px}
 </style>
 </head>
 <body>
@@ -110,6 +159,7 @@ footer a{color:var(--turf)}
     <span class="hint">点击顶部日期 → 该列只显示可预订</span>
   </div>
   <div id="board" class="board"><div class="loading">加载中…</div></div>
+  <div id="m" class="m"><div class="loading">加载中…</div></div>
   <section class="stats" id="stats"></section>
   <footer id="footer"></footer>
 </div>
@@ -219,6 +269,7 @@ function render(DATA, MINE, generatedAt){
   });
   h+='</tbody></table>';
   board.innerHTML=h;
+  renderMobile(DATA, MINE, meta);
 
   document.querySelectorAll('.datebtn').forEach(btn=>{
     btn.addEventListener('click',()=>{
@@ -237,6 +288,51 @@ function render(DATA, MINE, generatedAt){
   const stamp = generatedAt ? new Date(generatedAt).toLocaleString('zh-CN',{timeZone:'Australia/Sydney'}) : '未知';
   footer.innerHTML = `快照:${stamp}(悉尼时间)· 每 30 分钟自动刷新 · 来源 <a href="https://www.tennisworldonline.com.au/bookacourt/">tennisworldonline.com.au</a> · 空场实时变动,预订前请再确认。`;
 }
+
+// Phone view: the 16x8 grid needs ~1400px, so narrow screens get a date strip
+// plus one court per row instead. Same data, same render pass.
+const MSTATE={i:0,freeOnly:true};
+
+function renderMobile(DATA, MINE, meta){
+  const host=document.getElementById('m');
+  if(!meta.length){host.innerHTML='<div class="mempty">暂无数据</div>';return;}
+  if(MSTATE.i>=meta.length) MSTATE.i=0;
+  const m=meta[MSTATE.i];
+
+  const strip=meta.map((x,i)=>`<button class="mdate${i===MSTATE.i?' on':''}" data-i="${i}">
+      <span class="dd">${x.mo}/${x.da}</span>
+      <span class="dw${x.weekend?' we':''}">${DOWCN[x.dow]}</span>
+      <span class="dc">${x.total}</span></button>`).join('');
+
+  const rows=COURTS.map(c=>{
+    const free=new Set(DATA[m.date][c.k]||[]);
+    const mineSet=new Set(((MINE[m.date]||{})[c.k])||[]);
+    if(MSTATE.freeOnly && !free.size && !mineSet.size) return '';
+    const chips=m.slots.map(t=>{
+      const cls=mineSet.has(t)?'mine':(free.has(t)?'free':'un');
+      if(MSTATE.freeOnly && cls==='un') return '';
+      return `<span class="chip ${cls}">${t}</span>`;
+    }).join('');
+    const tag=free.size?`${free.size*0.5}h 可订`:(mineSet.size?'我的预订':'已满');
+    return `<div class="mrow"><div class="mct"><span class="dot ${c.t}"></span>${c.n}<em>${tag}</em></div>
+      <div class="chips">${chips}</div></div>`;
+  }).join('');
+
+  host.innerHTML=`<div class="mdates">${strip}</div>
+    <div class="mbar"><button id="mOnly" class="${MSTATE.freeOnly?'on':''}">只看可订</button>
+      <span>${m.total} 个空格 · ${m.total*0.5}h</span></div>
+    <div class="mlist">${rows||'<div class="mempty">这天没有空场</div>'}</div>`;
+
+  host.querySelectorAll('.mdate').forEach(b=>b.addEventListener('click',()=>{
+    MSTATE.i=+b.dataset.i; renderMobile(DATA,MINE,meta);
+  }));
+  document.getElementById('mOnly').addEventListener('click',()=>{
+    MSTATE.freeOnly=!MSTATE.freeOnly; renderMobile(DATA,MINE,meta);
+  });
+}
+
+// Lets the page be added to the home screen and still open without signal.
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 load().catch(e=>{
   document.getElementById('board').innerHTML = `<div class="err">数据加载失败:${e.message}</div>`;
