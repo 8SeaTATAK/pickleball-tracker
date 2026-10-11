@@ -30,3 +30,24 @@ node scrape.mjs
 ```
 
 Requires Node 18+ (uses the built-in `fetch`).
+
+## Recording a booking from a phone
+
+The page is read-only for everyone by default. To turn one device into an
+editor:
+
+1. On GitHub, create a **fine-grained personal access token**: *Settings →
+   Developer settings → Personal access tokens → Fine-grained tokens*. Scope it
+   to **this repository only**, with **Repository permissions → Contents:
+   Read and write**. Nothing else.
+2. On the phone, open `https://8seatatak.github.io/pickleball-tracker/#edit`
+   and paste the token when prompted.
+
+From then on that device shows an **✎ 编辑我的预订** button. Tap slots to toggle
+them, then **保存到 GitHub** — it commits `data/mine.json` through the contents
+API, and Pages redeploys in about a minute.
+
+The token lives only in that browser's `localStorage`; it is never committed and
+never leaves the device except as an `Authorization` header to api.github.com.
+Open `#forget` to wipe it from a device, or revoke it on GitHub if a phone is
+lost.
