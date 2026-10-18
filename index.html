@@ -146,15 +146,16 @@ footer a{color:var(--turf)}
   color:var(--muted);margin-left:7px}
 .mempty{padding:26px 0;text-align:center;color:var(--muted);font-size:13px}
 
-/* ---------- edit mode (only visible once a token is stored) ---------- */
+/* ---------- refresh + edit toolbars ---------- */
+#refreshbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:12px 0 2px;font-size:12.5px}
 #editbar{display:none;align-items:center;gap:9px;flex-wrap:wrap;margin:10px 0 2px;font-size:12.5px}
 #editbar.show{display:flex}
-#editbar button{border:1px solid var(--line);background:var(--card);color:var(--ink);
+#refreshbar button,#editbar button{border:1px solid var(--line);background:var(--card);color:var(--ink);
   border-radius:999px;padding:6px 14px;font:inherit;font-size:12.5px;cursor:pointer}
-#editbar button.go{background:var(--turf);border-color:var(--turf);color:#fff;font-weight:600}
-#editbar button:disabled{opacity:.45;cursor:default}
-#editbar .note{color:var(--muted)}
-#editbar .note.warn{color:var(--clay)}
+#refreshbar button.go,#editbar button.go{background:var(--turf);border-color:var(--turf);color:#fff;font-weight:600}
+#refreshbar button:disabled,#editbar button:disabled{opacity:.45;cursor:default}
+#refreshbar .note,#editbar .note{color:var(--muted)}
+#refreshbar .note.warn,#editbar .note.warn{color:var(--clay)}
 body.editing .chip{cursor:pointer}
 body.editing td.cell.freeonly .chip{display:inline-flex}
 body.editing .chip.free,body.editing .chip.un{border-style:dashed}
@@ -172,6 +173,7 @@ body.editing .chip:active{transform:scale(.94)}
     <span class="k"><span class="box mine">20:00</span> 我的预订</span>
     <span class="hint">点击顶部日期 → 该列只显示可预订</span>
   </div>
+  <div id="refreshbar"></div>
   <div id="editbar"></div>
   <div id="board" class="board"><div class="loading">加载中…</div></div>
   <div id="m" class="m"><div class="loading">加载中…</div></div>
@@ -192,12 +194,19 @@ const WE=['14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00
 
 // Last payload rendered, so edit mode can re-render without refetching.
 let LAST=null;
-async function load(){
+// fresh=true reads the files straight from the repo through the GitHub API
+// (needs the device token), so a just-finished scrape shows up without
+// waiting for Pages to redeploy.
+async function load(fresh){
   const bust = '?t=' + Date.now();
+  const get = fresh && EDIT.token
+    ? p=>fetch(`https://api.github.com/repos/${REPO}/contents/${p}?ref=main&t=${Date.now()}`,
+        {headers:{Authorization:'Bearer '+EDIT.token,Accept:'application/vnd.github.raw+json'},cache:'no-store'})
+    : p=>fetch(p+bust);
   const [availRes, mineRes, histRes] = await Promise.all([
-    fetch('data/availability.json'+bust),
-    fetch('data/mine.json'+bust).catch(()=>null),
-    fetch('data/history.json'+bust).catch(()=>null)
+    get('data/availability.json'),
+    get('data/mine.json').catch(()=>null),
+    get('data/history.json').catch(()=>null)
   ]);
   if(!availRes.ok) throw new Error('availability.json fetch failed');
   const avail = await availRes.json();
@@ -289,6 +298,7 @@ function render(DATA, MINE, generatedAt){
   h+='</tbody></table>';
   board.innerHTML=h;
   renderMobile(DATA, MINE, meta);
+  renderRefreshBar();
   renderEditBar();
 
   document.querySelectorAll('.datebtn').forEach(btn=>{
@@ -458,11 +468,79 @@ async function saveMine(){
   }
 }
 
+// ---------------------------------------------------------------------------
+// Refresh from source: MindBody sends no CORS headers, so the browser can't
+// read it directly. Instead the button fires the scrape workflow on GitHub
+// Actions, waits for it to finish, then pulls the new files via the API.
+// Needs the device token to also carry Actions: Read and write.
+// ---------------------------------------------------------------------------
+const WORKFLOW='refresh.yml';
+const RF={busy:false,msg:''};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+function renderRefreshBar(){
+  const bar=document.getElementById('refreshbar');
+  if(!bar) return;
+  const stamp=LAST&&LAST.gen?new Date(LAST.gen).toLocaleString('zh-CN',
+    {timeZone:'Australia/Sydney',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+  const label=RF.busy?'刷新中…':(EDIT.token?'↻ 从源站刷新':'↻ 重新加载');
+  const note=[RF.msg, stamp&&`数据快照 ${stamp}`, !EDIT.token&&'从源站刷新需先在本设备打开 #edit 登录']
+    .filter(Boolean).join(' · ');
+  bar.innerHTML=`<button id="rBtn" class="go" ${RF.busy||EDIT.on?'disabled':''}>${label}</button>
+    <span class="note${RF.msg.startsWith('✗')?' warn':''}">${note}</span>`;
+  document.getElementById('rBtn').onclick=EDIT.token?refreshFromSource:()=>{
+    RF.msg='';load().catch(e=>{RF.msg='✗ '+e.message;renderRefreshBar();});
+  };
+}
+
+async function refreshFromSource(){
+  RF.busy=true;RF.msg='已触发,正在排队…';renderRefreshBar();
+  const api=`https://api.github.com/repos/${REPO}/actions`;
+  const headers={Authorization:'Bearer '+EDIT.token,Accept:'application/vnd.github+json'};
+  const since=Date.now();
+  try{
+    const r=await fetch(`${api}/workflows/${WORKFLOW}/dispatches`,{method:'POST',
+      headers:{...headers,'Content-Type':'application/json'},
+      body:JSON.stringify({ref:'main',return_run_details:true})});
+    if(r.status===401||r.status===403||r.status===404) throw new Error('令牌没有 Actions 读写权限(见 README)');
+    if(!r.ok) throw new Error('触发失败 '+r.status);
+    let runId=null;
+    if(r.status===200){try{runId=(await r.json()).workflow_run_id||null;}catch{}}
+    let run=null;
+    while(Date.now()-since<5*60e3){
+      await sleep(4000);
+      if(!runId){
+        // Older API: no run id in the reply, so pick the dispatch run we just started.
+        const l=await fetch(`${api}/workflows/${WORKFLOW}/runs?event=workflow_dispatch&per_page=5&t=${Date.now()}`,{headers,cache:'no-store'});
+        if(l.ok){
+          const hit=(await l.json()).workflow_runs.find(x=>Date.parse(x.created_at)>=since-30e3);
+          if(hit) runId=hit.id;
+        }
+        continue;
+      }
+      const g=await fetch(`${api}/runs/${runId}?t=${Date.now()}`,{headers,cache:'no-store'});
+      if(!g.ok) continue;
+      run=await g.json();
+      if(run.status==='completed') break;
+      RF.msg=run.status==='in_progress'?'正在从源站抓取 16 片场…':'已触发,正在排队…';
+      renderRefreshBar();
+    }
+    if(!run||run.status!=='completed') throw new Error('等了 5 分钟还没完成,稍后再看');
+    if(run.conclusion!=='success') throw new Error('抓取失败('+run.conclusion+')');
+    await load(true);
+    RF.msg='✓ 已从源站更新';
+  }catch(err){
+    RF.msg='✗ '+err.message;
+  }finally{
+    RF.busy=false;renderRefreshBar();
+  }
+}
+
 function initEdit(){
   if(location.hash==='#edit'){
     history.replaceState(null,'',location.pathname+location.search);
     if(!EDIT.token){
-      const t=prompt('粘贴 GitHub fine-grained 令牌(只给本仓库 Contents 读写权限):','');
+      const t=prompt('粘贴 GitHub fine-grained 令牌(只给本仓库 Contents + Actions 读写权限):','');
       if(t && t.trim()){EDIT.token=t.trim();localStorage.setItem('pb_token',EDIT.token);}
     }
     if(EDIT.token) EDIT.on=true;

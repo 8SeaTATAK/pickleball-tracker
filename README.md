@@ -39,13 +39,23 @@ editor:
 1. On GitHub, create a **fine-grained personal access token**: *Settings →
    Developer settings → Personal access tokens → Fine-grained tokens*. Scope it
    to **this repository only**, with **Repository permissions → Contents:
-   Read and write**. Nothing else.
+   Read and write** and **Actions: Read and write** (the second one powers the
+   refresh button). Nothing else.
 2. On the phone, open `https://8seatatak.github.io/pickleball-tracker/#edit`
    and paste the token when prompted.
 
 From then on that device shows an **✎ 编辑我的预订** button. Tap slots to toggle
 them, then **保存到 GitHub** — it commits `data/mine.json` through the contents
 API, and Pages redeploys in about a minute.
+
+## Refreshing from the source on demand
+
+The **↻ 从源站刷新** button at the top of the page (shown on any device that has a
+token) starts the *Refresh pickleball availability* workflow, waits for the scrape
+to finish (usually under a minute), then reads the new files straight from the repo
+through the API — no waiting for Pages. MindBody sends no CORS headers, so the
+browser can't scrape it directly; the workflow does it instead. Without a token the
+button just reloads the latest published data.
 
 The token lives only in that browser's `localStorage`; it is never committed and
 never leaves the device except as an `Authorization` header to api.github.com.

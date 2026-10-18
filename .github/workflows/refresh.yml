@@ -10,6 +10,12 @@ on:
 permissions:
   contents: write
 
+# A manual refresh from the page can overlap a scheduled run; queue them
+# instead of letting two pushes race.
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
@@ -29,4 +35,5 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git add data/availability.json data/mine.json data/history.json
           git diff --cached --quiet && echo "No changes." || git commit -m "Refresh availability data"
+          git pull --rebase origin main # mine.json may have been saved from a phone meanwhile
           git push
