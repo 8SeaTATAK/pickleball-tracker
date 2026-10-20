@@ -23,18 +23,18 @@
 :root{
   --paper:#f6f5f1; --card:#fdfcfa; --ink:#1c211c; --muted:#71776f; --line:#e2e0d8;
   --turf:#216b43; --clay:#b95c30;
-  --free-bg:#d3e9f6; --free-br:#7bb4d6; --free-tx:#155574;
-  --un-bg:#eceae4; --un-tx:#a7aca2; --un-br:#e2e0d8;
-  --mine-bg:#dcefe1; --mine-br:#3f9c68; --mine-tx:#1c6b3f;
+  --free-bg:#e5f6e9; --free-br:#3fae5f; --free-tx:#1d7a3a;
+  --un-bg:#f4f4f1; --un-tx:#c6c9c2; --un-br:#ebebe6;
+  --mine-bg:#7c3aed; --mine-br:#7c3aed; --mine-tx:#fff; --prem:#7c3aed;
   --head:#eef4f0;
 }
 @media (prefers-color-scheme:dark){
  :root{
   --paper:#141714; --card:#1a1e1a; --ink:#e9ebe6; --muted:#99a094; --line:#2c312b;
   --turf:#7fd0a1; --clay:#e08a5c;
-  --free-bg:#173442; --free-br:#2f6d8c; --free-tx:#8fcdec;
-  --un-bg:#20241f; --un-tx:#5c635a; --un-br:#2c312b;
-  --mine-bg:#183a27; --mine-br:#3f9c68; --mine-tx:#8ee0ab;
+  --free-bg:#16331f; --free-br:#3f9c5e; --free-tx:#8fe0a8;
+  --un-bg:#1b1e1a; --un-tx:#4b5149; --un-br:#252924;
+  --mine-bg:#7c3aed; --mine-br:#9466f2; --mine-tx:#fff; --prem:#9466f2;
   --head:#1e2620;
  }
 }
@@ -75,7 +75,7 @@ tbody th.court{position:sticky;left:0;z-index:2;background:var(--card);text-alig
   font-family:Oswald,sans-serif;font-weight:600;font-size:13px;padding:8px 14px 8px 12px;white-space:nowrap;
   border-right:2px solid var(--line)}
 tbody th.court .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:middle}
-.dot.p{background:var(--clay)} .dot.s{background:var(--turf)}
+.dot.p{background:var(--prem)} .dot.s{background:var(--turf)}
 tbody tr.tierrow th{position:sticky;left:0;background:var(--head);font-family:Oswald,sans-serif;
   text-transform:uppercase;letter-spacing:.1em;font-size:10.5px;font-weight:600;color:var(--muted);
   padding:5px 12px;z-index:2}
@@ -87,8 +87,8 @@ td.cell{padding:6px;min-width:172px}
   align-items:center;justify-content:center;font-size:10.5px;font-variant-numeric:tabular-nums;font-weight:500}
 .chip.free{background:var(--free-bg);border-color:var(--free-br);color:var(--free-tx)}
 .chip.un{background:var(--un-bg);border-color:var(--un-br);color:var(--un-tx)}
-.chip.mine{background:var(--mine-bg);border-color:var(--mine-br);color:var(--mine-tx);font-weight:600;
-  box-shadow:0 0 0 1px var(--mine-br) inset}
+.chip.mine{background:var(--mine-bg);border-color:var(--mine-br);color:var(--mine-tx);font-weight:600}
+.chip.mine::after{content:'✓';margin-left:1px}
 td.cell.freeonly .chip.un,td.cell.freeonly .chip.mine{display:none}
 td.cell.freeonly .chips:empty::after,td.cell.freeonly.empty::after{content:'—';color:var(--muted);font-size:12px}
 .stats{margin-top:34px}
@@ -137,10 +137,11 @@ footer a{color:var(--turf)}
 .mbar{display:flex;align-items:center;gap:10px;margin:2px 0 8px;font-size:12px;color:var(--muted)}
 .mbar button{border:1px solid var(--line);background:var(--card);color:var(--muted);
   border-radius:999px;padding:5px 13px;font:inherit;font-size:12px;cursor:pointer}
-.mbar button.on{background:var(--mine-bg);border-color:var(--mine-br);color:var(--mine-tx);font-weight:600}
+.mbar button.on{background:var(--free-bg);border-color:var(--free-br);color:var(--free-tx);font-weight:600}
 .mlist{border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
 .mrow{padding:10px 13px;border-bottom:1px solid var(--line)}
 .mrow:last-child{border-bottom:0}
+.mrow.p{box-shadow:4px 0 0 var(--prem) inset}
 .mct{font-family:Oswald,sans-serif;font-weight:600;font-size:13.5px;margin-bottom:7px}
 .mct em{font-style:normal;font-family:Inter,sans-serif;font-weight:400;font-size:11.5px;
   color:var(--muted);margin-left:7px}
@@ -344,7 +345,7 @@ function renderMobile(DATA, MINE, meta){
       return `<span class="chip ${cls}" data-d="${m.date}" data-c="${c.k}" data-t="${t}">${t}</span>`;
     }).join('');
     const tag=free.size?`${free.size*0.5}h 可订`:(mineSet.size?'我的预订':'已满');
-    return `<div class="mrow"><div class="mct"><span class="dot ${c.t}"></span>${c.n}<em>${tag}</em></div>
+    return `<div class="mrow ${c.t}"><div class="mct"><span class="dot ${c.t}"></span>${c.n}<em>${tag}</em></div>
       <div class="chips">${chips}</div></div>`;
   }).join('');
 
