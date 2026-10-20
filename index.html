@@ -109,43 +109,55 @@ footer{margin-top:22px;font-size:12px;color:var(--muted)}
 footer a{color:var(--turf)}
 .loading,.err{padding:40px 0;text-align:center;color:var(--muted)}
 
-/* ---------- phone layout: date strip + one court per row ---------- */
+/* ---------- single-day view: date tabs + one court per row ----------
+   Always on for phones (the grid needs ~1400px); on desktop it's the
+   "单日" side of the view toggle. */
 .m{display:none}
+body.dayview .board,body.dayview .legend .hint{display:none}
+body.dayview .m{display:block}
 @media (max-width:760px){
   .wrap{padding:20px 16px 56px}
   h1{font-size:24px}
-  .board,.legend .hint{display:none}
+  .board,.legend .hint,.viewseg{display:none!important}
   .m{display:block}
   .cards{gap:8px}
   .card{flex:1 1 calc(50% - 4px);min-width:0;padding:10px 12px}
   .card b{font-size:22px}
   .stats h2{font-size:19px}
 }
-.mdates{display:flex;gap:7px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none;
-  position:sticky;top:0;background:var(--paper);z-index:5}
-.mdates::-webkit-scrollbar{display:none}
-.mdate{flex:none;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:56px;
-  border:1px solid var(--line);background:var(--card);border-radius:10px;
-  padding:7px 11px;cursor:pointer;color:inherit;font:inherit}
-.mdate .dd{font-family:Oswald,sans-serif;font-weight:600;font-size:15px;font-variant-numeric:tabular-nums}
-.mdate .dw{font-size:10.5px;color:var(--muted)}
-.mdate .dw.we{color:var(--clay);font-weight:600}
-.mdate .dc{font-size:10px;font-family:Oswald,sans-serif;font-weight:600;color:var(--turf);
+.mtabs{display:flex;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--line);
+  position:sticky;top:0;background:var(--paper);z-index:5;margin-top:10px}
+.mtabs::-webkit-scrollbar{display:none}
+.mtab{flex:none;border:0;background:transparent;color:var(--ink);font:inherit;font-size:14px;
+  padding:9px 14px 8px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;
   font-variant-numeric:tabular-nums}
-.mdate.on{background:var(--turf);border-color:var(--turf)}
-.mdate.on .dd,.mdate.on .dw,.mdate.on .dc{color:#fff}
-.mbar{display:flex;align-items:center;gap:10px;margin:2px 0 8px;font-size:12px;color:var(--muted)}
+.mtab .dw{color:var(--muted);margin-right:4px}
+.mtab.we{font-style:italic}
+.mtab.we .dw{color:var(--clay)}
+.mtab.on{border-bottom-color:var(--turf);color:var(--turf);font-weight:600}
+.mtab.on .dw{color:var(--turf)}
+.mbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 4px;font-size:12px;color:var(--muted)}
+.mbar .pill{background:var(--un-bg);border-radius:8px;padding:6px 11px;color:var(--ink)}
 .mbar button{border:1px solid var(--line);background:var(--card);color:var(--muted);
   border-radius:999px;padding:5px 13px;font:inherit;font-size:12px;cursor:pointer}
 .mbar button.on{background:var(--free-bg);border-color:var(--free-br);color:var(--free-tx);font-weight:600}
-.mlist{border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
-.mrow{padding:10px 13px;border-bottom:1px solid var(--line)}
-.mrow:last-child{border-bottom:0}
-.mrow.p{box-shadow:4px 0 0 var(--prem) inset}
-.mct{font-family:Oswald,sans-serif;font-weight:600;font-size:13.5px;margin-bottom:7px}
-.mct em{font-style:normal;font-family:Inter,sans-serif;font-weight:400;font-size:11.5px;
-  color:var(--muted);margin-left:7px}
+.mtier{font-family:Oswald,sans-serif;font-weight:600;font-size:12.5px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);margin:16px 2px 7px}
+.mrow{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);
+  border-radius:10px;padding:9px 12px;margin-bottom:7px}
+.mrow{border-left:4px solid var(--line)}
+.mrow.p{border-left-color:var(--prem)}
+.mct{flex:none;width:92px}
+.mct b{display:block;font-family:Oswald,sans-serif;font-weight:600;font-size:14px}
+.mct small{font-size:11px;color:var(--muted)}
+.mrow.p .mct small{color:var(--prem)}
+.mrow .chips{flex:1}
+@media (max-width:420px){.mct{width:74px}}
 .mempty{padding:26px 0;text-align:center;color:var(--muted);font-size:13px}
+
+.viewseg{display:inline-flex;margin-left:auto;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+#refreshbar .viewseg button{border:0;border-radius:0;background:var(--card);color:var(--muted);padding:6px 14px}
+#refreshbar .viewseg button.on{background:var(--turf);color:#fff;font-weight:600}
 
 /* ---------- refresh + edit toolbars ---------- */
 #refreshbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:12px 0 2px;font-size:12.5px}
@@ -320,21 +332,25 @@ function render(DATA, MINE, generatedAt){
   footer.innerHTML = `快照:${stamp}(悉尼时间)· 每 30 分钟自动刷新 · 来源 <a href="https://www.tennisworldonline.com.au/bookacourt/">tennisworldonline.com.au</a> · 空场实时变动,预订前请再确认。`;
 }
 
-// Phone view: the 16x8 grid needs ~1400px, so narrow screens get a date strip
-// plus one court per row instead. Same data, same render pass.
+// Single-day view (phones always; desktop via the 全部日期/单日 toggle):
+// a tab per date, then one card per court with that day's slots.
 const MSTATE={i:0,freeOnly:true};
+const TIERS={p:'Premium (Ct 1-4) · A$35/hr',s:'Standard (Ct 5-16) · A$30/hr'};
+const store={get(k){try{return localStorage.getItem(k)}catch{return null}},
+             set(k,v){try{localStorage.setItem(k,v)}catch{}}};
+const VIEW={day:store.get('pb_view')==='day'};
 
 function renderMobile(DATA, MINE, meta){
   const host=document.getElementById('m');
+  document.body.classList.toggle('dayview',VIEW.day);
   if(!meta.length){host.innerHTML='<div class="mempty">暂无数据</div>';return;}
   if(MSTATE.i>=meta.length) MSTATE.i=0;
   const m=meta[MSTATE.i];
 
-  const strip=meta.map((x,i)=>`<button class="mdate${i===MSTATE.i?' on':''}" data-i="${i}">
-      <span class="dd">${x.mo}/${x.da}</span>
-      <span class="dw${x.weekend?' we':''}">${DOWCN[x.dow]}</span>
-      <span class="dc">${x.total}</span></button>`).join('');
+  const tabs=meta.map((x,i)=>`<button class="mtab${i===MSTATE.i?' on':''}${x.weekend?' we':''}" data-i="${i}">
+      <span class="dw">${DOWCN[x.dow].slice(1)}</span>${x.mo}/${x.da}</button>`).join('');
 
+  let lastTier='';
   const rows=COURTS.map(c=>{
     const free=new Set(DATA[m.date][c.k]||[]);
     const mineSet=new Set(((MINE[m.date]||{})[c.k])||[]);
@@ -344,22 +360,33 @@ function renderMobile(DATA, MINE, meta){
       if(FO() && cls==='un') return '';
       return `<span class="chip ${cls}" data-d="${m.date}" data-c="${c.k}" data-t="${t}">${t}</span>`;
     }).join('');
-    const tag=free.size?`${free.size*0.5}h 可订`:(mineSet.size?'我的预订':'已满');
-    return `<div class="mrow ${c.t}"><div class="mct"><span class="dot ${c.t}"></span>${c.n}<em>${tag}</em></div>
+    const tier=c.t!==lastTier?`<div class="mtier">${TIERS[c.t]}</div>`:'';
+    lastTier=c.t;
+    return `${tier}<div class="mrow ${c.t}"><div class="mct"><b>Ct ${c.k.slice(2)}</b>
+      <small>${c.t==='p'?'Premium':'Standard'} ${free.size}/${m.slots.length}</small></div>
       <div class="chips">${chips}</div></div>`;
   }).join('');
 
-  host.innerHTML=`<div class="mdates">${strip}</div>
-    <div class="mbar"><button id="mOnly" class="${FO()?'on':''}">只看可订</button>
+  const span=m.weekend?'周末 14:00–22:00':'工作日 19:00–22:00';
+  host.innerHTML=`<div class="mtabs">${tabs}</div>
+    <div class="mbar"><span class="pill">${span}(${m.slots.length} 格)</span>
+      <button id="mOnly" class="${FO()?'on':''}">只看可订</button>
       <span>${m.total} 个空格 · ${m.total*0.5}h</span></div>
-    <div class="mlist">${rows||'<div class="mempty">这天没有空场</div>'}</div>`;
+    ${rows||'<div class="mempty">这天没有空场</div>'}`;
 
-  host.querySelectorAll('.mdate').forEach(b=>b.addEventListener('click',()=>{
+  host.querySelectorAll('.mtab').forEach(b=>b.addEventListener('click',()=>{
     MSTATE.i=+b.dataset.i; renderMobile(DATA,MINE,meta);
   }));
+  const on=host.querySelector('.mtab.on');
+  if(on) on.scrollIntoView({block:'nearest',inline:'nearest'});
   document.getElementById('mOnly').addEventListener('click',()=>{
     MSTATE.freeOnly=!MSTATE.freeOnly; renderMobile(DATA,MINE,meta);
   });
+}
+
+function setView(day){
+  VIEW.day=day; store.set('pb_view',day?'day':'all');
+  if(LAST) rerender();
 }
 
 // Lets the page be added to the home screen and still open without signal.
@@ -488,7 +515,10 @@ function renderRefreshBar(){
   const note=[RF.msg, stamp&&`数据快照 ${stamp}`, !EDIT.token&&'从源站刷新需先在本设备打开 #edit 登录']
     .filter(Boolean).join(' · ');
   bar.innerHTML=`<button id="rBtn" class="go" ${RF.busy||EDIT.on?'disabled':''}>${label}</button>
-    <span class="note${RF.msg.startsWith('✗')?' warn':''}">${note}</span>`;
+    <span class="note${RF.msg.startsWith('✗')?' warn':''}">${note}</span>
+    <span class="viewseg"><button id="vAll" class="${VIEW.day?'':'on'}">全部日期</button><button id="vDay" class="${VIEW.day?'on':''}">单日</button></span>`;
+  document.getElementById('vAll').onclick=()=>setView(false);
+  document.getElementById('vDay').onclick=()=>setView(true);
   document.getElementById('rBtn').onclick=EDIT.token?refreshFromSource:()=>{
     RF.msg='';load().catch(e=>{RF.msg='✗ '+e.message;renderRefreshBar();});
   };
