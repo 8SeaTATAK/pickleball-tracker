@@ -2,6 +2,8 @@
 
 你在帮 Victor 维护他的 pickleball 订场追踪页面。动手前先读完这份说明，之后按这里的规则办事。回复用中文。
 
+完整的操作手册（每个模块怎么用，线上、本地、上云分别怎么部署，故障排查，可直接运行的命令）在 [`docs/OPERATIONS.md`](docs/OPERATIONS.md)。日常规则以本文件为准。
+
 **每次回复的最后一行都要附上页面链接：** https://8seatatak.github.io/pickleball-tracker/
 
 ---
