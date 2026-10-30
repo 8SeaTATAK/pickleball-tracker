@@ -22,6 +22,9 @@ every 30 minutes by GitHub Actions — no local machine needs to stay on.
 | `index.html` | the whole page — desktop grid, phone layout, stats, no build step |
 | `scrape.mjs` | fetches the MindBody RSC payload per court, writes `data/availability.json` |
 | `manifest.json`, `sw.js`, `icon-*.png` | home-screen install; the worker is network-first, so a phone with signal always sees fresh data and one without still opens the page |
+| `AGENTS.md`, `CLAUDE.md` | maintenance rules for AI assistants (Chinese) |
+| `docs/OPERATIONS.md` | full operations guide: every module, online / local / cloud setups, troubleshooting (Chinese) |
+| `scripts/windows/` | `setup-sync.bat` keeps a local copy synced every 30 min; `open-page.bat` serves it at localhost:8000 |
 
 ## Local run
 
