@@ -94,6 +94,8 @@ miniapp/
 node miniapp/preview/build.js preview.html
 ```
 
+二维码用内联打包的 qrcode-generator（MIT，`preview/vendor/`），不依赖外部 CDN；功能图标在 `preview/icons/`。
+
 适合在拿到 AppID 之前给球友看效果。改了算法或文案后重新运行一次即可同步。
 
 ## 测试

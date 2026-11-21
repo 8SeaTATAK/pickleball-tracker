@@ -41,7 +41,9 @@ function __req(name) {
 `;
 
 const svg = (f) => JSON.stringify(read(f).replace(/<!--[\s\S]*?-->/g, '').replace(/\s*\n\s*/g, ''));
-const htmlIcons = `const BALL_SVG = ${svg('preview/pickleball.svg')};\nconst PADDLE_SVG = ${svg('preview/paddle.svg')};`;
+// preview/icons/*.svg → ICONS.名称（统一风格的功能图标，小程序用同名 PNG）
+const iconNames = fs.readdirSync(path.join(__dirname, 'icons')).filter((f) => f.endsWith('.svg')).map((f) => f.slice(0, -4));
+const htmlIcons = `const ICONS = {${iconNames.map((n) => `${JSON.stringify(n)}: ${svg('preview/icons/' + n + '.svg')}`).join(', ')}};`;
 
 const html = `<title>匹克球助手预览</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -53,6 +55,8 @@ ${read('preview/style.css')}
 </style>
 <div id="app" class="shell"></div>
 <script>
+// 二维码：qrcode-generator 1.4.4（MIT，Kazuhiko Arase），内联打包，不依赖外部 CDN
+${read('preview/vendor/qrcode-generator.js')}
 ${runtime}
 ${bundle}
 // 预览代码放进独立作用域，避免和 window.top 等浏览器全局变量冲突

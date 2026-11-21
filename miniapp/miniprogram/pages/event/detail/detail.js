@@ -4,7 +4,10 @@ const { predict } = require('../../../utils/predict');
 const i18n = require('../../../utils/i18n');
 const app = getApp();
 
-const MODE_KEYS = ['rotation', 'balanced', 'fixed', 'singles', 'singlesRR'];
+// 目前只开放双打八人转；云函数仍支持其他赛制，以后放开时加回这里
+const MODE_KEYS = ['rotation'];
+// 八人转默认轮数：每人和其他人各搭档一次，总场数 A×(A−1)÷4
+const rotationRounds = (n, courts) => Math.max(1, Math.ceil((n * (n - 1)) / 4 / Math.max(1, Math.min(courts, Math.floor(n / 4)))));
 const modes = () => MODE_KEYS.map((key) => ({ key, name: i18n.t('mode_' + key), desc: i18n.t('mode_' + key + '_d') }));
 
 // 系统弹窗按钮文字跟随小程序语言
@@ -116,6 +119,7 @@ Page({
       statusText: fmt.status(r.event.status),
       currency: (r.club && r.club.settings && r.club.settings.currency) || 'A$',
       genCourts: String(r.event.courts),
+      genRounds: String(rotationRounds(r.joined.length, r.event.courts)),
       names: r.joined.map((p) => p.nickName),
       tab: this.data.tab === 'players' && r.matches.length && !this._tabTouched ? 'matches' : this.data.tab,
     });

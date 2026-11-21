@@ -39,13 +39,13 @@
   <view class="card grid">
     <view class="cell" bindtap="go" data-url="/pages/mine/events/events"><image class="ic ball" src="/images/pickleball.png" /><text>{{t.menu_events}}</text></view>
     <view class="cell" bindtap="go" data-url="/pages/mine/matches/matches"><image class="ic ball" src="/images/paddle.png" /><text>{{t.menu_matches}}</text></view>
-    <view class="cell" bindtap="goRating"><view class="ic c3">📈</view><text>{{t.menu_rating}}</text></view>
-    <view class="cell" bindtap="go" data-url="/pages/guide/guide?topic=levels"><view class="ic c4">🏅</view><text>{{t.menu_levels}}</text></view>
-    <view class="cell" bindtap="go" data-url="/pages/guide/guide?topic=formats"><view class="ic c5">🔄</view><text>{{t.menu_formats}}</text></view>
-    <view class="cell" bindtap="go" data-url="/pages/guide/guide?topic=start"><view class="ic c6">🧭</view><text>{{t.menu_guide}}</text></view>
-    <view class="cell" bindtap="goClubs"><view class="ic c7">🏠</view><text>{{t.myClubs}}</text></view>
-    <view class="cell" bindtap="go" data-url="/pages/rules/rules"><view class="ic c8">📐</view><text>{{t.rulesLink}}</text></view>
-    <button class="cell plain" open-type="contact"><view class="ic c9">💬</view><text>{{t.menu_contact}}</text></button>
+    <view class="cell" bindtap="goRating"><image class="ic ball" src="/images/trophy.png" /><text>{{t.menu_rating}}</text></view>
+    <view class="cell" bindtap="go" data-url="/pages/guide/guide?topic=levels"><image class="ic ball" src="/images/levels.png" /><text>{{t.menu_levels}}</text></view>
+    <view class="cell" bindtap="go" data-url="/pages/guide/guide?topic=formats"><image class="ic ball" src="/images/formats.png" /><text>{{t.menu_formats}}</text></view>
+    <view class="cell" bindtap="go" data-url="/pages/guide/guide?topic=start"><image class="ic ball" src="/images/guide.png" /><text>{{t.menu_guide}}</text></view>
+    <view class="cell" bindtap="goClubs"><image class="ic ball" src="/images/club.png" /><text>{{t.myClubs}}</text></view>
+    <view class="cell" bindtap="go" data-url="/pages/rules/rules"><image class="ic ball" src="/images/rules.png" /><text>{{t.rulesLink}}</text></view>
+    <button class="cell plain" open-type="contact"><image class="ic ball" src="/images/contact.png" /><text>{{t.menu_contact}}</text></button>
   </view>
 
   <!-- 列表 -->

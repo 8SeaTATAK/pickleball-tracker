@@ -151,4 +151,7 @@ test('头像/昵称修改规则', () => {
   const c = checkChange({ ...u, changeCredits: { nickName: 2 } }, 'nickName', now);
   assert.strictEqual(c.data['changeCredits.nickName'], 1);
   assert.ok(checkChange({ ...u, avatarFirstSet: true }, 'avatar', now).allowed, '头像单独计时');
+  // 匹克球等级同样 30 天一次，首次不计
+  assert.deepStrictEqual(checkChange({}, 'pbLevel', now), { allowed: true, data: { pbLevelFirstSet: true } });
+  assert.strictEqual(nextChangeAt({ pbLevelFirstSet: true, pbLevelChangedAt: now - 1000 }, 'pbLevel', now), now - 1000 + COOLDOWN);
 });

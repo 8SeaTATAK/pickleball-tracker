@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="rules">
+  <!-- 评分规则：深棕写字板 + 米白纸 + 橙线 + 墨绿对勾 -->
+  <rect x="8" y="6" width="32" height="39" rx="4" fill="#4A1E12"/>
+  <rect x="11.5" y="10" width="25" height="31.5" rx="2" fill="#F6EBDD"/>
+  <rect x="18" y="3.5" width="12" height="6.5" rx="2" fill="#E2772B"/>
+  <g stroke="#E2772B" stroke-width="2.2" stroke-linecap="round"><line x1="22" y1="18" x2="32" y2="18"/><line x1="22" y1="26" x2="32" y2="26"/><line x1="22" y1="34" x2="29" y2="34"/></g>
+  <g fill="none" stroke="#2E6E6A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 18 L16.3 19.8 L19.3 16.3"/><path d="M14.5 26 L16.3 27.8 L19.3 24.3"/></g>
+  <circle cx="16.8" cy="34" r="2.3" fill="#F5D32E"/>
+</svg>

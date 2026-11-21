@@ -165,7 +165,7 @@ test('页面冒烟：首页 → 建俱乐部 → 发活动 → 报名 → 生成
 
   // 生成对阵（均衡模式，2 场 4 轮）
   ed.openGen();
-  ed.pickMode(ev({ i: 1 }));
+  ed.pickMode(ev({ i: 0 }));
   ed.onGenInput(ev({ k: 'genRounds' }, '4'));
   await ed.generate();
   await ed.load();
@@ -178,9 +178,10 @@ test('页面冒烟：首页 → 建俱乐部 → 发活动 → 报名 → 生成
   ed.openScore(ev({ r: '0', m: '0' }));
   assert.ok(ed.data.showScore);
   ed.quick(ev({ k: 'scoreA' }));
-  ed.onScore(ev({ k: 'scoreB' }, '6'));
+  // 用 11:1 大胜：评分看比分，强队险胜也可能掉分；大胜时胜方一定涨分，测试才稳定
+  ed.onScore(ev({ k: 'scoreB' }, '0'));
   ed.step(ev({ k: 'scoreB', d: '1' }));
-  assert.strictEqual(ed.data.scoreB, '7');
+  assert.strictEqual(ed.data.scoreB, '1');
   await ed.submitScore();
   await ed.load();
   const m0 = ed.data.rounds[0].matches[0];
@@ -377,6 +378,7 @@ test('多语言：跟随系统语言、手动切换、错误提示翻译', async
   ed.onLoad({ id: env.nav.pop().split('id=')[1] });
   await ed.load();
   assert.strictEqual(ed.data.currency, 'RM');
-  assert.strictEqual(ed.data.modes[0].name, 'Doubles rotation');
+  assert.strictEqual(ed.data.modes[0].name, 'Rotating partners');
+  assert.strictEqual(ed.data.modes.length, 1, '目前只开放八人转');
   await flush();
 });

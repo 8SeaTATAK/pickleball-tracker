@@ -24,7 +24,7 @@ Page({
         ['lv_4', '4.0+'],
         ['lv_5', '4.5+'],
       ].map(([k, range]) => ({ name: t[k], range })),
-      modes: ['rotation', 'balanced', 'fixed', 'singles', 'singlesRR'].map((k) => ({ name: t['mode_' + k], desc: t['mode_' + k + '_d'] })),
+      modes: ['rotation'].map((k) => ({ name: t['mode_' + k], desc: t['mode_' + k + '_d'] })),
       steps: [1, 2, 3, 4, 5].map((n) => t['g_' + n]),
     });
   },

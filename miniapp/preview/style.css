@@ -284,3 +284,51 @@ select.ev-input { text-align-last: right; cursor: pointer; }
 .ribbon.finished { background: var(--muted); }
 .ribbon.playing { background: var(--clay); }
 .ribbon.open { background: var(--btn); }
+
+/* 选手名单 */
+.av-wrap { position: relative; flex-shrink: 0; }
+.me-badge { position: absolute; top: -4px; right: -6px; background: #3b82c4; color: #fff; font-size: 10px; border-radius: 999px; padding: 0 5px; line-height: 16px; box-shadow: 0 0 0 2px var(--card); }
+.item .pb { display: flex; align-items: center; gap: 2px; font-size: 13px; flex-shrink: 0; }
+
+/* 技术等级 */
+.lv-std { display: flex; flex-direction: column; gap: 12px; }
+.lv-row { display: flex; gap: 12px; align-items: flex-start; font-size: 14px; }
+.lv-num { font-family: var(--display); font-size: 22px; color: var(--clay); width: 72px; flex-shrink: 0; line-height: 1.2; }
+.lv-row .lv { display: inline-block; margin-bottom: 2px; }
+.lv-card .lv-head { display: flex; align-items: center; gap: 10px; }
+.lv-ul { margin: 4px 0 0; padding-left: 20px; font-size: 14px; display: flex; flex-direction: column; gap: 2px; }
+.lv-links { display: flex; justify-content: space-around; flex-wrap: wrap; gap: 8px; margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.rank-n { width: 20px; color: var(--muted); text-align: center; flex-shrink: 0; }
+
+/* AA 收款 */
+.bill .payid { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px 10px; background: var(--paper); border-radius: 10px; min-width: 0; }
+.my-bill { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; font-weight: 600; }
+.pay-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.pay-chip { display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 6px 8px; font-size: 13px; color: var(--ink); min-width: 0; cursor: pointer; text-align: left; }
+.pay-chip:disabled { cursor: default; }
+.pay-chip .ellipsis { flex: 1; min-width: 0; }
+.pay { font-size: 11px; padding: 1px 6px; border-radius: 999px; white-space: nowrap; }
+.pay.unpaid { background: var(--clay-soft); color: var(--clay); }
+.pay.claimed { background: #fdf3c4; color: #8c6a06; }
+.pay.paid { background: var(--accent-soft); color: var(--accent); }
+.msg-preview { background: var(--paper); border-radius: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.6; }
+
+/* 报名备注 */
+.center-mask { align-items: center; justify-content: center; padding: 16px; }
+.dialog { position: relative; background: var(--card); border-radius: 16px; padding: 22px 18px 18px; width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 12px; }
+.dialog .x { position: absolute; right: 8px; top: 6px; border: 0; background: none; font-size: 22px; color: var(--muted); cursor: pointer; padding: 4px 8px; }
+.note-input { border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 10px; padding: 10px 12px; font: inherit; }
+.note-tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.note-tags button { border: 1px solid var(--line); background: var(--card); color: var(--accent); border-radius: 999px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+.note-tags button.on { background: var(--btn); color: var(--btn-ink); border-color: var(--btn); }
+.note-chip { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); margin-left: 4px; }
+.qrbox { display: grid; place-items: center; background: #fff; padding: 12px; border-radius: 12px; min-height: 224px; word-break: break-all; color: #1b211c; font-size: 12px; }
+
+/* 收款单 / 带人 */
+.bill-rows { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.bill-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font-size: 14px; cursor: pointer; text-align: left; }
+.check { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; font-size: 12px; color: transparent; flex-shrink: 0; }
+.check.on { background: var(--btn); border-color: var(--btn); color: var(--btn-ink); }
+.radio { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.radio.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.field .muted { flex-shrink: 0; }

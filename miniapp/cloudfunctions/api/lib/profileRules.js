@@ -1,6 +1,6 @@
-// 头像 / 昵称修改频率（见 miniapp/PRODUCT_RULES.md）
+// 头像 / 昵称 / 匹克球等级 修改频率（见 miniapp/PRODUCT_RULES.md）
 //
-// - 距离上次修改满 30 天才能再改，昵称和头像分开算
+// - 距离上次修改满 30 天才能再改，三项分开计时
 // - 注册后第一次设置不计入
 // - 临时球员不受限制
 // - 付费用户不受限制（user.premium，付费功能上线后由后台写入）
@@ -12,6 +12,7 @@ const COOLDOWN = 30 * DAY;
 const KEYS = {
   nickName: { first: 'nickNameFirstSet', at: 'nickNameChangedAt' },
   avatar: { first: 'avatarFirstSet', at: 'avatarChangedAt' },
+  pbLevel: { first: 'pbLevelFirstSet', at: 'pbLevelChangedAt' },
 };
 
 /**
