@@ -10,7 +10,7 @@ const { predict } = __req('predict');
 const PR = __req('profileRules');
 
 const ME = 'me';
-const STORE = 'pp_state_v3';
+const STORE = 'pp_state_v4';
 const DAY = 86400000;
 
 // 预览专用文案
@@ -50,7 +50,8 @@ function seed() {
   PEOPLE.forEach(([id, name, real, lv, guest], i) => {
     truth[id] = real;
     const blk = () => ({ rating: lv, games: 0, wins: 0, losses: 0 });
-    st.users[id] = { _id: id, nickName: name, gender: FEMALE.includes(id) ? 'f' : 'm', avatarUrl: '', guest: !!guest, color: COLORS[i % COLORS.length], doubles: blk(), singles: blk() };
+    const pbLevel = id === ME ? { type: 'self', value: 3.5 } : id === 'minh' ? { type: 'dupr', value: 4.052 } : id === 'chen' ? { type: 'dupr', value: 4.618 } : null;
+    st.users[id] = { _id: id, pbLevel, nickName: name, gender: FEMALE.includes(id) ? 'f' : 'm', avatarUrl: '', guest: !!guest, color: COLORS[i % COLORS.length], doubles: blk(), singles: blk() };
   });
   st.clubs.push(
     { _id: 'c1', name: 'North Ryde Pickleball', city: 'Sydney', inviteCode: 'NR7K2P', intro: '每周六上午 Tennis World North Ryde · Saturday mornings, all levels welcome', settings: { winPoints: 3, lossPoints: 1, currency: 'A$' } },
@@ -507,6 +508,7 @@ function viewMe(t) {
       ${avatar(u, 'xl')}
       <div class="name-row"><span class="bold name">${esc(u.nickName)}</span>${u.gender === 'm' ? '<span class="sex m">♂</span>' : u.gender === 'f' ? '<span class="sex f">♀</span>' : ''}<span class="lv">${esc(i18n.levelTitle(u.doubles))}</span></div>
       <div class="muted num">${esc(f(t.ratingsLine, fmt.ratingLabel(u.doubles), fmt.ratingLabel(u.singles)))}</div>
+      ${u.pbLevel ? `<div class="muted">${t.pbLevel}: ${esc(pbText(t, u.pbLevel))}</div>` : ''}
     </div>
     <div class="mstats">
       <div class="half tap" data-act="record" data-kind="singles" role="button" tabindex="0"><div class="kv"><div class="k">${t.singles}</div><div class="v num">${f(t.gamesCount, u.singles.games)}</div></div><div class="kv"><div class="k">${t.colWinRate}</div><div class="v num">${rate(u.singles)}%</div></div></div>
@@ -534,31 +536,34 @@ function viewMe(t) {
   </div>`;
 }
 
+const SELF_LEVELS = [2.5, 3.0, 3.5, 4.0]; // 与《评分与级别规则 v1》自评问卷的四个结果一致
+const levelKey = (l) => 'level_' + String(l).replace('.', '').replace(/0$/, '');
+const pbText = (t, pb) => (!pb ? '' : pb.type === 'dupr' ? `DUPR ${Number(pb.value).toFixed(3)}` : `${t.pbSelf} ${Number(pb.value).toFixed(1)}`);
+
 function viewEdit(t) {
   const e = ui.edit;
   const u = { ...st.users[ME], avatarUrl: e.avatarUrl, nickName: e.nickName || st.users[ME].nickName };
-  const canLevel = !st.users[ME].doubles.games && !st.users[ME].singles.games;
   // 与云函数相同的 30 天规则：冷却期内禁用并显示下次可修改日期
   const nameAt = PR.nextChangeAt(st.users[ME], 'nickName', Date.now());
   const avatarAt = PR.nextChangeAt(st.users[ME], 'avatar', Date.now());
-  const LV = [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0];
-  const lk = (l) => 'level_' + String(l).replace('.', '').replace(/0$/, '');
+  const pen = '<span class="pen" aria-hidden="true">✎</span>';
+  const avatarRow = avatarAt
+    ? `<div class="erow"><span class="ek">${t.avatar}</span>${avatar(u, 'sm')}<span class="ev muted">${esc(f(t.nextChangeHint, i18n.dayMonth(avatarAt)))}</span></div>`
+    : `<label class="erow" for="avatarFile"><span class="ek">${t.avatar}</span>${avatar(u, 'sm')}<span class="ev">${t.changeAvatar}</span><span class="arrow">›</span></label>
+       <input id="avatarFile" type="file" accept="image/*" data-change="avatar" hidden>`;
   return `
-  <div class="card center">
-    ${
-      avatarAt
-        ? `<div class="avatar-pick">${avatar(u, 'xxl')}<span class="muted">${esc(f(t.nextChangeHint, i18n.dayMonth(avatarAt)))}</span></div>`
-        : `<label class="avatar-pick" for="avatarFile">${avatar(u, 'xxl')}<span class="link">${t.changeAvatar}</span></label>
-    <input id="avatarFile" type="file" accept="image/*" data-change="avatar" hidden>`
-    }
+  <div class="card elist">
+    ${avatarRow}
+    <div class="erow"><label class="ek" for="nick">${t.nickname}</label><input id="nick" class="ev-input" maxlength="20" placeholder="${t.nicknamePh}" value="${esc(e.nickName)}" data-input="nick" ${nameAt ? 'disabled' : ''}>${nameAt ? '' : pen}</div>
+    ${nameAt ? `<div class="muted ehint">${esc(f(t.nextChangeHint, i18n.dayMonth(nameAt)))}</div>` : ''}
+    <div class="erow"><label class="ek" for="gender">${t.gender}</label>
+      <select id="gender" class="ev-input" data-change="gender">${['', 'm', 'f'].map((g) => `<option value="${g}" ${e.gender === g ? 'selected' : ''}>${t['gender_' + g]}</option>`).join('')}</select>
+      ${e.gender === 'm' ? '<span class="sex m">♂</span>' : e.gender === 'f' ? '<span class="sex f">♀</span>' : pen}</div>
   </div>
-  <div class="card">
-    <div class="field"><label for="nick">${t.nickname}</label><input id="nick" maxlength="20" placeholder="${t.nicknamePh}" value="${esc(e.nickName)}" data-input="nick" ${nameAt ? 'disabled' : ''}></div>
-    ${nameAt ? `<div class="muted" style="padding:0 0 8px 106px">${esc(f(t.nextChangeHint, i18n.dayMonth(nameAt)))}</div>` : ''}
-    <div class="field"><label for="gender">${t.gender}</label><select id="gender" data-change="gender">${['', 'm', 'f'].map((g) => `<option value="${g}" ${e.gender === g ? 'selected' : ''}>${t['gender_' + g]}</option>`).join('')}</select></div>
-    ${canLevel ? `<div class="field"><label for="level">${t.startLevel}</label><select id="level" data-change="level">${LV.map((l) => `<option value="${l}" ${e.level === l ? 'selected' : ''}>${l.toFixed(1)} ${t[lk(l)]}</option>`).join('')}</select></div>` : ''}
+  <div class="card elist">
+    <button class="erow" data-act="openLevel"><span class="ek">${t.pbLevel}${e.pb ? `<span class="muted">（${e.pb.type === 'dupr' ? 'DUPR' : t.pbSelf}）</span>` : ''}</span>
+      <span class="ev ${e.pb ? '' : 'muted'}">${e.pb ? Number(e.pb.value).toFixed(e.pb.type === 'dupr' ? 3 : 1) : t.notFilled}</span>${pen}</button>
   </div>
-  ${canLevel ? `<div class="muted" style="padding:0 4px">${t.setLevelDesc}</div>` : ''}
   <div class="muted" style="padding:0 4px">${t.changeRuleHint}</div>
   <button class="btn" data-act="saveEdit">${t.save}</button>`;
 }
@@ -655,60 +660,71 @@ function recordMatches(kind) {
   return all.slice(0, Number(r.filter));
 }
 
+// 两人头像叠在一起 + 名字「A / B」
+function pairHtml(ids) {
+  const us = ids.map((id) => st.users[id]);
+  return `<div class="pair"><div class="faces">${us.map((u) => avatar(u, 'sm')).join('')}</div>
+    <div class="pnames">${us.map((u, i) => `<div class="ellipsis">${i ? '<span class="muted">/ </span>' : ''}${esc(u.nickName)}</div>`).join('')}</div></div>`;
+}
+
 function viewRecord(t, kind) {
   const ump = kind.startsWith('ump');
+  const type = kind === 'singles' || kind === 'umpSingles' ? 'singles' : 'doubles';
   const list = recordMatches(kind);
   const r = ui.rec;
   const chips = [['10', f(t.f_last, 10)], ['20', f(t.f_last, 20)], ['50', f(t.f_last, 50)], ['half', t.f_halfMonth], ['custom', t.f_custom]];
   const bar = `<div class="chips">${chips.map(([k, label]) => `<button class="${r.filter === k ? 'on' : ''}" data-act="recFilter" data-k="${k}">${label}</button>`).join('')}</div>
   ${r.filter === 'custom' ? `<div class="card"><div class="field"><label for="recFrom">${t.dateFrom}</label><input id="recFrom" type="date" value="${r.from}" data-change="recFrom"></div>
     <div class="field"><label for="recTo">${t.dateTo}</label><input id="recTo" type="date" value="${r.to}" data-change="recTo"></div></div>` : ''}`;
-  const sep = i18n.getLang() === 'zh' ? '、' : ', ';
-  const names = (team) => team.map((p) => esc(st.users[p].nickName)).join(sep);
-  let summary;
-  let rows;
+  const typeName = type === 'singles' ? t.singles : t.doubles;
   if (ump) {
-    summary = `<div class="card center"><div class="rating-big num">${list.length}</div><div class="muted">${esc(f(t.umpiredN, list.length))}</div></div>`;
-    rows = list.map((m) => `<div class="item" data-act="event" data-id="${m.eventId}" role="button" tabindex="0">
-      <div class="grow"><div class="ellipsis">${names(m.teamA)} <span class="muted">vs</span> ${names(m.teamB)}</div>
-      <div class="muted">${fmt.shortDate(m.playedAt)} · ${f(t.roundN, m.round)} · ${f(t.courtN, m.court)}</div></div>
-      <div class="bold num">${m.scoreA}:${m.scoreB}</div></div>`);
-  } else {
-    let w = 0, pf = 0, pa = 0, dsum = 0;
-    rows = list.map((m) => {
-      const a = m.teamA.includes(ME);
-      const own = a ? m.scoreA : m.scoreB;
-      const opp = a ? m.scoreB : m.scoreA;
-      const won = own > opp;
-      const d = ((m.ratingChanges || []).find((c) => c.id === ME) || {}).delta || 0;
-      w += won ? 1 : 0;
-      pf += own;
-      pa += opp;
-      dsum += d;
-      const partner = (a ? m.teamA : m.teamB).filter((p) => p !== ME);
-      return `<div class="item" data-act="event" data-id="${m.eventId}" role="button" tabindex="0"><div class="wl ${won ? 'w' : 'l'}">${won ? t.winShort : t.lossShort}</div>
-        <div class="grow"><div class="ellipsis">${partner.length ? esc(f(t.withPartner, partner.map((p) => st.users[p].nickName).join(sep))) : ''}<span class="muted">vs</span> ${names(a ? m.teamB : m.teamA)}</div>
-        <div class="muted">${fmt.shortDate(m.playedAt)} · ${f(t.roundN, m.round)}</div></div>
-        <div class="center"><div class="bold num">${own}:${opp}</div><div class="d ${d > 0 ? 'up' : d < 0 ? 'down' : 'muted'}">${fmt.delta(d)}</div></div></div>`;
-    });
-    const n = list.length;
-    const pct = n ? Math.round((w / n) * 100) : 0;
-    summary = `<div class="card rec"><div class="ring" style="--p:${pct}"><div><div class="rating-big num">${pct}%</div><div class="muted">${t.colWinRate}</div></div></div>
-      <div class="rec-stats">
-        <div><div class="muted">${t.games}</div><div class="bold num">${n}</div></div>
-        <div><div class="muted">${t.colWL}</div><div class="bold num">${w}-${n - w}</div></div>
-        <div><div class="muted">${t.colScores}</div><div class="bold num">${pf}/${pa}</div></div>
-        <div><div class="muted">${t.colDiff}</div><div class="bold num ${pf - pa > 0 ? 'up' : pf - pa < 0 ? 'down' : ''}">${pf - pa > 0 ? '+' : ''}${pf - pa}</div></div>
-        <div><div class="muted">${t.ratingChangeLabel}</div><div class="bold num ${dsum > 0 ? 'up' : dsum < 0 ? 'down' : ''}">${fmt.delta(R.round3(dsum))}</div></div>
-      </div></div>`;
+    const cards = list.map((m) => `<div class="card vs-card" data-act="event" data-id="${m.eventId}" role="button" tabindex="0">
+      ${pairHtml(m.teamA)}<div class="vs">vs</div>${pairHtml(m.teamB)}
+      <div class="res"><div class="num big"><span class="${m.scoreA > m.scoreB ? 'hi' : ''}">${m.scoreA}</span> : <span class="${m.scoreB > m.scoreA ? 'hi' : ''}">${m.scoreB}</span></div><div class="muted">${fmt.shortDate(m.playedAt)}</div></div></div>`);
+    return `${bar}<div class="card summary">${esc(f(t.umpSummary, list.length, typeName))}</div>${cards.length ? cards.join('') : `<div class="card empty">${t.noBoard}</div>`}`;
   }
-  return `${bar}${summary}<div class="card flush">${rows.length ? rows.join('') : `<div class="empty">${t.noBoard}</div>`}</div>`;
+  // 同样的「我方 vs 对方」合并成一张卡：胜:负 + 胜率
+  const groups = new Map();
+  let wins = 0;
+  for (const m of list) {
+    const a = m.teamA.includes(ME);
+    const mine = (a ? m.teamA : m.teamB).slice().sort((x, y) => (x === ME ? -1 : y === ME ? 1 : 0));
+    const opp = (a ? m.teamB : m.teamA).slice().sort();
+    const key = mine.join() + '|' + opp.join();
+    const won = a ? m.scoreA > m.scoreB : m.scoreB > m.scoreA;
+    wins += won ? 1 : 0;
+    if (!groups.has(key)) groups.set(key, { mine, opp, w: 0, l: 0, eventId: m.eventId });
+    const g = groups.get(key);
+    if (won) g.w++;
+    else g.l++;
+  }
+  const pct = list.length ? Math.round((wins / list.length) * 100) : 0;
+  const cards = [...groups.values()].map((g) => `<div class="card vs-card" data-act="event" data-id="${g.eventId}" role="button" tabindex="0">
+    ${pairHtml(g.mine)}<div class="vs">vs</div>${pairHtml(g.opp)}
+    <div class="res"><div class="num big"><span class="hi">${g.w}</span> : ${g.l}</div><div class="muted">${f(t.cardWinRate, Math.round((g.w / (g.w + g.l)) * 100))}</div></div></div>`);
+  return `${bar}<div class="card summary">${esc(f(t.recSummary, list.length, typeName))} <b class="hi">${pct}%</b></div>
+  ${cards.length ? cards.join('') : `<div class="card empty">${t.noBoard}</div>`}`;
 }
 
 // ---------------- 弹层 ----------------
 function sheetHtml(t) {
   const s = ui.sheet;
   if (!s) return '';
+  if (s.kind === 'level') {
+    const tab = s.type;
+    return `<div class="mask" data-act="closeSheet"><div class="sheet" data-stop="1">
+      <h3>${t.pbLevel}</h3>
+      <div class="tabs">${['self', 'dupr'].map((k) => `<button class="${tab === k ? 'on' : ''}" data-act="levelTab" data-k="${k}">${k === 'self' ? t.pbSelf : t.pbDupr}</button>`).join('')}</div>
+      ${
+        tab === 'self'
+          ? SELF_LEVELS.map((l) => `<button class="mode ${s.self === l ? 'on' : ''}" data-act="pickSelf" data-l="${l}"><div class="bold num">${l.toFixed(1)}</div><div class="muted">${t[levelKey(l)]}</div></button>`).join('')
+          : `<div class="field"><label for="dupr">${t.pbDupr}</label><input id="dupr" type="number" inputmode="decimal" step="0.001" min="2" max="8" placeholder="${t.duprPh}" value="${s.dupr}"></div>
+             <div class="muted">${t.duprHint}</div>`
+      }
+      ${!st.users[ME].doubles.games && !st.users[ME].singles.games ? `<div class="muted">${t.pbSeedHint}</div>` : ''}
+      <div class="btn-row"><button class="btn ghost" data-act="closeSheet">${t.cancel}</button><button class="btn" data-act="confirmLevel">${t.ok}</button></div>
+    </div></div>`;
+  }
   if (s.kind === 'launch') {
     const opt = (ic, label) => `<button class="mode row" data-act="na"><span class="li-ic">${ic}</span><span class="bold">${label}</span></button>`;
     return `<div class="mask" data-act="closeSheet"><div class="sheet" data-stop="1">
@@ -879,8 +895,34 @@ const actions = {
   },
   edit() {
     const u = st.users[ME];
-    ui.edit = { avatarUrl: u.avatarUrl || '', nickName: u.nickName, gender: u.gender || '', level: 3.5 };
+    ui.edit = { avatarUrl: u.avatarUrl || '', nickName: u.nickName, gender: u.gender || '', pb: u.pbLevel || null };
     go({ view: 'edit' });
+  },
+  openLevel() {
+    const pb = ui.edit.pb;
+    ui.sheet = { kind: 'level', type: pb ? pb.type : 'self', self: pb && pb.type === 'self' ? pb.value : 3.0, dupr: pb && pb.type === 'dupr' ? pb.value : '' };
+    rerender();
+  },
+  levelTab(d) {
+    if (document.getElementById('dupr')) ui.sheet.dupr = num('dupr');
+    ui.sheet.type = d.k;
+    rerender();
+  },
+  pickSelf(d) {
+    ui.sheet.self = Number(d.l);
+    rerender();
+  },
+  confirmLevel() {
+    const s = ui.sheet;
+    if (s.type === 'dupr') {
+      const v = Number(num('dupr'));
+      if (!(v >= 2 && v <= 8)) return toast(i18n.errMsg('duprRange'));
+      ui.edit.pb = { type: 'dupr', value: R.round3(v) };
+    } else {
+      ui.edit.pb = { type: 'self', value: s.self };
+    }
+    ui.sheet = null;
+    rerender();
   },
   saveEdit() {
     const e = ui.edit;
@@ -894,10 +936,11 @@ const actions = {
       if (!r.allowed) return toast(i18n.errMsg(field === 'avatar' ? 'avatarChangeLimit' : 'nameChangeLimit', { at: r.nextAt }));
       Object.assign(patch, r.data, { [key]: value });
     }
-    Object.assign(u, patch);
-    if (!u.doubles.games && !u.singles.games) {
-      u.doubles.rating = e.level;
-      u.singles.rating = e.level;
+    Object.assign(u, patch, { pbLevel: e.pb });
+    // 还没打过比赛：等级作为起始评分
+    if (e.pb && !u.doubles.games && !u.singles.games) {
+      u.doubles.rating = e.pb.value;
+      u.singles.rating = e.pb.value;
     }
     save();
     ui.stack.pop();
@@ -1081,7 +1124,6 @@ app.addEventListener('change', (ev) => {
   }
   if (!k || !ui.edit) return;
   if (k === 'gender') ui.edit.gender = ev.target.value;
-  if (k === 'level') ui.edit.level = Number(ev.target.value);
   if (k === 'avatar' && ev.target.files && ev.target.files[0]) {
     readAvatar(ev.target.files[0], (url) => {
       ui.edit.avatarUrl = url;
