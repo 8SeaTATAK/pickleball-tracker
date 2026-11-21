@@ -10,7 +10,7 @@ const { predict } = __req('predict');
 const PR = __req('profileRules');
 
 const ME = 'me';
-const STORE = 'pp_state_v2';
+const STORE = 'pp_state_v3';
 const DAY = 86400000;
 
 // 预览专用文案
@@ -68,8 +68,8 @@ function seed() {
   const daysToSat = (6 - new Date(now).getDay() + 7) % 7 || 7;
   const nextSat = at9(now + daysToSat * DAY);
 
-  // 过去 4 个周六：每次 6 轮 × 2 片场，比分按真实水平逐分模拟
-  for (let k = 4; k >= 1; k--) {
+  // 过去 8 个周六：每次 6 轮 × 2 片场，比分按真实水平逐分模拟
+  for (let k = 8; k >= 1; k--) {
     const start = nextSat - 7 * k * DAY;
     const ev = newEvent(st, start, 'finished');
     const players = Object.keys(st.users).filter(() => rand() > 0.12);
@@ -509,11 +509,11 @@ function viewMe(t) {
       <div class="muted num">${esc(f(t.ratingsLine, fmt.ratingLabel(u.doubles), fmt.ratingLabel(u.singles)))}</div>
     </div>
     <div class="mstats">
-      <div class="half"><div class="kv"><div class="k">${t.singles}</div><div class="v num">${f(t.gamesCount, u.singles.games)}</div></div><div class="kv"><div class="k">${t.colWinRate}</div><div class="v num">${rate(u.singles)}%</div></div></div>
+      <div class="half tap" data-act="record" data-kind="singles" role="button" tabindex="0"><div class="kv"><div class="k">${t.singles}</div><div class="v num">${f(t.gamesCount, u.singles.games)}</div></div><div class="kv"><div class="k">${t.colWinRate}</div><div class="v num">${rate(u.singles)}%</div></div></div>
       <div class="divider"></div>
-      <div class="half"><div class="kv"><div class="k">${t.doubles}</div><div class="v num">${f(t.gamesCount, u.doubles.games)}</div></div><div class="kv"><div class="k">${t.colWinRate}</div><div class="v num">${rate(u.doubles)}%</div></div></div>
+      <div class="half tap" data-act="record" data-kind="doubles" role="button" tabindex="0"><div class="kv"><div class="k">${t.doubles}</div><div class="v num">${f(t.gamesCount, u.doubles.games)}</div></div><div class="kv"><div class="k">${t.colWinRate}</div><div class="v num">${rate(u.doubles)}%</div></div></div>
     </div>
-    <div class="umpire"><span>${t.umpireSingles}: <b class="v num">${f(t.gamesCount, ump('singles'))}</b></span><span>${t.umpireDoubles}: <b class="v num">${f(t.gamesCount, ump('doubles'))}</b></span></div>
+    <div class="umpire"><span class="tap" data-act="record" data-kind="umpSingles" role="button" tabindex="0">${t.umpireSingles}: <b class="v num">${f(t.gamesCount, ump('singles'))}</b> ›</span><span class="tap" data-act="record" data-kind="umpDoubles" role="button" tabindex="0">${t.umpireDoubles}: <b class="v num">${f(t.gamesCount, ump('doubles'))}</b> ›</span></div>
     <div class="note">${t.finishedOnly}</div>
   </div>
   <div class="card mgrid">
@@ -636,6 +636,75 @@ function readAvatar(file, done) {
   fr.readAsDataURL(file);
 }
 
+
+// ---------------- 胜率 / 裁判记录 ----------------
+// kind: singles | doubles（我的比赛）、umpSingles | umpDoubles（我当裁判的比赛）
+function recordMatches(kind) {
+  const ump = kind.startsWith('ump');
+  const type = kind === 'singles' || kind === 'umpSingles' ? 'singles' : 'doubles';
+  const all = st.matches
+    .filter((m) => m.status === 'done' && m.type === type && (ump ? m.recordedBy === ME && !m.players.includes(ME) : m.players.includes(ME)))
+    .sort((a, b) => b.playedAt - a.playedAt);
+  const r = ui.rec;
+  if (r.filter === 'half') return all.filter((m) => m.playedAt >= Date.now() - 15 * DAY);
+  if (r.filter === 'custom') {
+    const from = r.from ? new Date(r.from + 'T00:00:00').getTime() : 0;
+    const to = r.to ? new Date(r.to + 'T23:59:59').getTime() : Infinity;
+    return all.filter((m) => m.playedAt >= from && m.playedAt <= to);
+  }
+  return all.slice(0, Number(r.filter));
+}
+
+function viewRecord(t, kind) {
+  const ump = kind.startsWith('ump');
+  const list = recordMatches(kind);
+  const r = ui.rec;
+  const chips = [['10', f(t.f_last, 10)], ['20', f(t.f_last, 20)], ['50', f(t.f_last, 50)], ['half', t.f_halfMonth], ['custom', t.f_custom]];
+  const bar = `<div class="chips">${chips.map(([k, label]) => `<button class="${r.filter === k ? 'on' : ''}" data-act="recFilter" data-k="${k}">${label}</button>`).join('')}</div>
+  ${r.filter === 'custom' ? `<div class="card"><div class="field"><label for="recFrom">${t.dateFrom}</label><input id="recFrom" type="date" value="${r.from}" data-change="recFrom"></div>
+    <div class="field"><label for="recTo">${t.dateTo}</label><input id="recTo" type="date" value="${r.to}" data-change="recTo"></div></div>` : ''}`;
+  const sep = i18n.getLang() === 'zh' ? '、' : ', ';
+  const names = (team) => team.map((p) => esc(st.users[p].nickName)).join(sep);
+  let summary;
+  let rows;
+  if (ump) {
+    summary = `<div class="card center"><div class="rating-big num">${list.length}</div><div class="muted">${esc(f(t.umpiredN, list.length))}</div></div>`;
+    rows = list.map((m) => `<div class="item" data-act="event" data-id="${m.eventId}" role="button" tabindex="0">
+      <div class="grow"><div class="ellipsis">${names(m.teamA)} <span class="muted">vs</span> ${names(m.teamB)}</div>
+      <div class="muted">${fmt.shortDate(m.playedAt)} · ${f(t.roundN, m.round)} · ${f(t.courtN, m.court)}</div></div>
+      <div class="bold num">${m.scoreA}:${m.scoreB}</div></div>`);
+  } else {
+    let w = 0, pf = 0, pa = 0, dsum = 0;
+    rows = list.map((m) => {
+      const a = m.teamA.includes(ME);
+      const own = a ? m.scoreA : m.scoreB;
+      const opp = a ? m.scoreB : m.scoreA;
+      const won = own > opp;
+      const d = ((m.ratingChanges || []).find((c) => c.id === ME) || {}).delta || 0;
+      w += won ? 1 : 0;
+      pf += own;
+      pa += opp;
+      dsum += d;
+      const partner = (a ? m.teamA : m.teamB).filter((p) => p !== ME);
+      return `<div class="item" data-act="event" data-id="${m.eventId}" role="button" tabindex="0"><div class="wl ${won ? 'w' : 'l'}">${won ? t.winShort : t.lossShort}</div>
+        <div class="grow"><div class="ellipsis">${partner.length ? esc(f(t.withPartner, partner.map((p) => st.users[p].nickName).join(sep))) : ''}<span class="muted">vs</span> ${names(a ? m.teamB : m.teamA)}</div>
+        <div class="muted">${fmt.shortDate(m.playedAt)} · ${f(t.roundN, m.round)}</div></div>
+        <div class="center"><div class="bold num">${own}:${opp}</div><div class="d ${d > 0 ? 'up' : d < 0 ? 'down' : 'muted'}">${fmt.delta(d)}</div></div></div>`;
+    });
+    const n = list.length;
+    const pct = n ? Math.round((w / n) * 100) : 0;
+    summary = `<div class="card rec"><div class="ring" style="--p:${pct}"><div><div class="rating-big num">${pct}%</div><div class="muted">${t.colWinRate}</div></div></div>
+      <div class="rec-stats">
+        <div><div class="muted">${t.games}</div><div class="bold num">${n}</div></div>
+        <div><div class="muted">${t.colWL}</div><div class="bold num">${w}-${n - w}</div></div>
+        <div><div class="muted">${t.colScores}</div><div class="bold num">${pf}/${pa}</div></div>
+        <div><div class="muted">${t.colDiff}</div><div class="bold num ${pf - pa > 0 ? 'up' : pf - pa < 0 ? 'down' : ''}">${pf - pa > 0 ? '+' : ''}${pf - pa}</div></div>
+        <div><div class="muted">${t.ratingChangeLabel}</div><div class="bold num ${dsum > 0 ? 'up' : dsum < 0 ? 'down' : ''}">${fmt.delta(R.round3(dsum))}</div></div>
+      </div></div>`;
+  }
+  return `${bar}${summary}<div class="card flush">${rows.length ? rows.join('') : `<div class="empty">${t.noBoard}</div>`}</div>`;
+}
+
 // ---------------- 弹层 ----------------
 function sheetHtml(t) {
   const s = ui.sheet;
@@ -698,6 +767,9 @@ function render() {
   } else if (v.view === 'player') {
     title = v.id === ME ? t.menu_rating : st.users[v.id].nickName;
     html = viewProfile(t, v.id);
+  } else if (v.view === 'record') {
+    title = t['rec_' + v.kind];
+    html = viewRecord(t, v.kind);
   } else if (v.view === 'edit') {
     title = t.editProfile;
     html = viewEdit(t);
@@ -782,6 +854,18 @@ const actions = {
   },
   launch() {
     ui.sheet = { kind: 'launch' };
+    rerender();
+  },
+  record(d) {
+    ui.rec = { filter: '10', from: '', to: '' };
+    go({ view: 'record', kind: d.kind });
+  },
+  recFilter(d) {
+    ui.rec.filter = d.k;
+    if (d.k === 'custom' && !ui.rec.from) {
+      ui.rec.to = fmt.date(Date.now());
+      ui.rec.from = fmt.date(Date.now() - 30 * DAY);
+    }
     rerender();
   },
   myEvents() {
@@ -991,6 +1075,10 @@ app.addEventListener('keydown', (ev) => {
 });
 app.addEventListener('change', (ev) => {
   const k = ev.target.dataset.change;
+  if (k === 'recFrom' || k === 'recTo') {
+    ui.rec[k === 'recFrom' ? 'from' : 'to'] = ev.target.value;
+    return rerender();
+  }
   if (!k || !ui.edit) return;
   if (k === 'gender') ui.edit.gender = ev.target.value;
   if (k === 'level') ui.edit.level = Number(ev.target.value);
