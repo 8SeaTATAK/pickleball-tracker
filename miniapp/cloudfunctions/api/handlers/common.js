@@ -20,6 +20,7 @@ function publicUser(u) {
     _id: u._id,
     nickName: u.nickName,
     avatarUrl: u.avatarUrl || '',
+    gender: u.gender || '',
     guest: !!u.guest,
     doubles: u.doubles,
     singles: u.singles,

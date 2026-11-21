@@ -243,6 +243,57 @@ const L = {
   level_45: ['失误少，能打出变化和速度，常参加比赛', 'Few errors, mixes pace and spin, plays tournaments regularly', 'Ít lỗi, biến hóa tốc độ và xoáy, thường thi đấu giải', 'Kurang silap, variasi kelajuan dan putaran, kerap bertanding'],
   level_5: ['高水平赛事选手', 'Top tournament player', 'Tay vợt thi đấu đỉnh cao', 'Pemain kejohanan tahap tinggi'],
 
+  // ---------- 我的（菜单页）/ 编辑资料 / 指南 ----------
+  launch: ['发起', 'New', 'Tạo', 'Baharu'],
+  needAdminClub: ['你还不是任何俱乐部的管理员，先创建一个俱乐部吧', "You're not an admin of any club yet — create one first", 'Bạn chưa là quản trị viên câu lạc bộ nào — hãy tạo một câu lạc bộ trước', 'Anda belum menjadi pentadbir mana-mana kelab — cipta kelab dahulu'],
+  gamesCount: ['{0}场', '{0}', '{0} trận', '{0}'],
+  ratingsLine: ['双打 {0} · 单打 {1}', 'Doubles {0} · Singles {1}', 'Đôi {0} · Đơn {1}', 'Beregu {0} · Perseorangan {1}'],
+  umpireSingles: ['单打裁判', 'Singles umpired', 'Trọng tài đơn', 'Pengadil perseorangan'],
+  umpireDoubles: ['双打裁判', 'Doubles umpired', 'Trọng tài đôi', 'Pengadil beregu'],
+  finishedOnly: ['※ 以上数据统计全部已结束比赛', '※ Counts include finished games only', '※ Chỉ tính các trận đã kết thúc', '※ Hanya perlawanan yang telah tamat dikira'],
+  menu_events: ['我的活动', 'My sessions', 'Buổi chơi của tôi', 'Sesi saya'],
+  menu_matches: ['我的比赛', 'My games', 'Trận của tôi', 'Perlawanan saya'],
+  menu_rating: ['我的评分', 'My rating', 'Điểm của tôi', 'Rating saya'],
+  menu_levels: ['等级标准', 'Level guide', 'Tiêu chuẩn trình độ', 'Panduan tahap'],
+  menu_formats: ['赛制介绍', 'Game formats', 'Thể thức thi đấu', 'Format permainan'],
+  menu_guide: ['新手指南', 'Getting started', 'Hướng dẫn người mới', 'Panduan permulaan'],
+  menu_contact: ['联系客服', 'Contact us', 'Liên hệ hỗ trợ', 'Hubungi kami'],
+  menu_feedback: ['产品建议', 'Suggestions', 'Góp ý sản phẩm', 'Cadangan'],
+  menu_invite: ['推荐给球友', 'Invite friends', 'Giới thiệu bạn bè', 'Jemput rakan'],
+  lv_newbie: ['萌新', 'Newbie', 'Tân binh', 'Pemula'],
+  lv_1: ['入门', 'Beginner', 'Cơ bản', 'Asas'],
+  lv_2: ['进阶', 'Intermediate', 'Trung bình', 'Pertengahan'],
+  lv_3: ['熟练', 'Skilled', 'Thành thạo', 'Mahir'],
+  lv_4: ['高手', 'Advanced', 'Cao thủ', 'Lanjutan'],
+  lv_5: ['大神', 'Expert', 'Chuyên gia', 'Pakar'],
+  lv_intro: ['参考下面的描述自评起始水平；之后评分完全由比赛比分决定。', 'Use these descriptions to pick your starting level. After that, your rating comes only from game scores.', 'Dùng mô tả dưới đây để chọn trình độ ban đầu. Sau đó điểm chỉ dựa trên tỉ số.', 'Guna huraian ini untuk pilih tahap permulaan. Selepas itu, rating hanya bergantung pada skor perlawanan.'],
+  lv_titles: ['称号', 'Titles', 'Danh hiệu', 'Gelaran'],
+  lv_titles_d: ['打满 6 场前是「萌新」，之后按双打评分显示称号。', 'You are a Newbie until 6 games, then your title follows your doubles rating.', 'Bạn là Tân binh cho đến khi đủ 6 trận, sau đó danh hiệu theo điểm đánh đôi.', 'Anda Pemula sehingga 6 perlawanan, kemudian gelaran mengikut rating beregu.'],
+  f_intro: ['每场活动可以用不同的对阵方式，管理员在活动页点「生成对阵」时选择。', 'Each session can use a different format. Admins pick one when they tap "Generate games".', 'Mỗi buổi chơi có thể dùng thể thức khác nhau. Quản trị viên chọn khi chạm "Xếp trận".', 'Setiap sesi boleh guna format berbeza. Pentadbir memilih semasa mengetik "Jana perlawanan".'],
+  f_tip: ['推荐：8 人 2 片场用「双打轮转」打 7 轮，每个人都能和其他人各搭档一次。', 'Tip: with 8 players on 2 courts, 7 rounds of doubles rotation lets everyone partner everyone else once.', 'Mẹo: 8 người 2 sân, 7 vòng xoay vòng đánh đôi thì ai cũng được đánh cặp với mọi người một lần.', 'Tip: 8 pemain di 2 gelanggang, 7 pusingan giliran beregu membolehkan setiap orang berpasangan dengan semua orang lain sekali.'],
+  g_1: ['设置起始水平：在「我的 → 编辑资料」选一个接近你的水平，评分会更快准确。', 'Set your starting level under Me → Edit profile so your rating settles faster.', 'Đặt trình độ ban đầu trong Tôi → Sửa hồ sơ để điểm ổn định nhanh hơn.', 'Tetapkan tahap permulaan di Saya → Sunting profil supaya rating cepat stabil.'],
+  g_2: ['加入俱乐部：点群里的分享卡片，或在首页输入 6 位邀请码。', 'Join a club: tap the share card in your group chat, or enter the 6-character invite code on Home.', 'Tham gia câu lạc bộ: chạm vào thẻ chia sẻ trong nhóm, hoặc nhập mã mời 6 ký tự ở Trang chủ.', 'Sertai kelab: ketik kad kongsi dalam kumpulan, atau masukkan kod jemputan 6 aksara di Utama.'],
+  g_3: ['报名活动：满员后自动进入候补，有人取消会自动递补。', 'Sign up for sessions. When a session is full you join the waitlist and move up automatically if someone cancels.', 'Đăng ký buổi chơi. Khi đủ người bạn vào danh sách chờ và tự động được lên khi có người hủy.', 'Daftar sesi. Jika penuh anda masuk senarai menunggu dan dinaikkan secara automatik jika ada yang batal.'],
+  g_4: ['打比赛：管理员生成对阵后，在「对阵」里找到你的场次；打完由场上任意一位球员录入比分。', 'Play: once the admin generates games, find yours under Games. After each game, any player on court enters the score.', 'Thi đấu: khi quản trị viên xếp trận, tìm trận của bạn trong mục Trận. Đánh xong, bất kỳ người chơi nào trên sân nhập tỉ số.', 'Bermain: selepas pentadbir menjana perlawanan, cari perlawanan anda di bahagian Perlawanan. Selepas tamat, mana-mana pemain di gelanggang memasukkan skor.'],
+  g_5: ['看成绩：评分变化马上显示；俱乐部积分榜和你的评分走势随时可以查看。', 'See results: rating changes show immediately, and you can check the club leaderboard and your rating trend anytime.', 'Xem kết quả: thay đổi điểm hiện ngay; xem bảng xếp hạng câu lạc bộ và biểu đồ điểm bất cứ lúc nào.', 'Lihat keputusan: perubahan rating dipaparkan serta-merta; semak papan mata kelab dan trend rating anda bila-bila masa.'],
+  g_admin: ['管理员：底部「发起」可以发布活动；活动页「管理」可以代报名、结束活动；成员页可以添加没有微信的临时球员。', 'Admins: tap New at the bottom to post a session. Use Manage on a session to sign people up or finish it, and add guest players without WeChat on the Members tab.', 'Quản trị viên: chạm Tạo ở dưới để đăng buổi chơi. Dùng Quản lý để đăng ký hộ hoặc kết thúc, và thêm người chơi khách không có WeChat ở mục Thành viên.', 'Pentadbir: ketik Baharu di bawah untuk siarkan sesi. Guna Urus untuk daftarkan ahli atau tamatkan sesi, dan tambah pemain tetamu tanpa WeChat di tab Ahli.'],
+  g_adminTitle: ['给管理员', 'For admins', 'Dành cho quản trị viên', 'Untuk pentadbir'],
+  editProfile: ['编辑资料', 'Edit profile', 'Sửa hồ sơ', 'Sunting profil'],
+  avatar: ['头像', 'Avatar', 'Ảnh đại diện', 'Avatar'],
+  changeAvatar: ['更换头像', 'Change avatar', 'Đổi ảnh', 'Tukar avatar'],
+  nickname: ['昵称', 'Name', 'Tên', 'Nama'],
+  nicknamePh: ['输入昵称', 'Your name', 'Nhập tên', 'Nama anda'],
+  gender: ['性别', 'Gender', 'Giới tính', 'Jantina'],
+  gender_: ['不设置', 'Not set', 'Không đặt', 'Tidak ditetapkan'],
+  gender_m: ['男', 'Male', 'Nam', 'Lelaki'],
+  gender_f: ['女', 'Female', 'Nữ', 'Perempuan'],
+  saved: ['已保存', 'Saved', 'Đã lưu', 'Disimpan'],
+  noMyEvents: ['还没有报名过活动', "You haven't signed up for any sessions yet", 'Bạn chưa đăng ký buổi chơi nào', 'Anda belum mendaftar mana-mana sesi'],
+  upNext: ['待开赛', 'Up next', 'Sắp đấu', 'Akan datang'],
+  finishedGames: ['已完赛', 'Finished', 'Đã xong', 'Selesai'],
+  loadMore: ['加载更多', 'Load more', 'Tải thêm', 'Muat lagi'],
+  err_invalidGender: ['无效的性别', 'Invalid gender', 'Giới tính không hợp lệ', 'Jantina tidak sah'],
+
   // ---------- 规则页 ----------
   r_nav: ['评分与积分规则', 'Rating & points rules', 'Quy tắc điểm', 'Peraturan rating & mata'],
   r_t1: ['模拟 DUPR 评分', 'Simulated DUPR rating', 'Điểm DUPR mô phỏng', 'Rating DUPR simulasi'],
@@ -409,10 +460,23 @@ function weekday(day) {
   return WEEK[getLang()][day];
 }
 
-// tab 栏文字：在 tab 页 onShow 里调用
+// 原生 tab 栏文字：在 tab 页 onShow 里调用
 function applyTabBar() {
   const d = dict();
   [d.tabHome, d.tabMe].forEach((text, index) => wx.setTabBarItem({ index, text, fail() {} }));
 }
 
-module.exports = { LANGS, LANG_NAMES, getLang, setLang, dict, t, errMsg, weekday, applyTabBar, format };
+// 自定义 tab 栏（custom-tab-bar）：在 tab 页 onShow 里调用，同步选中项和语言
+function syncTabBar(page, selected) {
+  const bar = typeof page.getTabBar === 'function' && page.getTabBar();
+  if (bar) bar.setData({ selected, t: dict() });
+}
+
+// 称号：打满 6 场前是萌新，之后按双打评分
+function levelTitle(doubles) {
+  if (!doubles || doubles.games < 6) return t('lv_newbie');
+  const r = doubles.rating;
+  return t(r >= 4.5 ? 'lv_5' : r >= 4.0 ? 'lv_4' : r >= 3.5 ? 'lv_3' : r >= 3.0 ? 'lv_2' : 'lv_1');
+}
+
+module.exports = { levelTitle, LANGS, LANG_NAMES, getLang, setLang, dict, t, errMsg, weekday, applyTabBar, syncTabBar, format };

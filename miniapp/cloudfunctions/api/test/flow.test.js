@@ -191,3 +191,31 @@ test('固定搭档与单打循环、未知 action', async () => {
   const few = await as('own')('generateSchedule', { eventId, mode: 'rotation', playerIds: [ids[0], ids[1]] });
   assert.deepStrictEqual([few.error, few.params], ['needPlayers', { n: 4 }]);
 });
+
+test('我的页接口：性别、裁判场次、我的比赛、我的活动', async () => {
+  const { as, ok } = setup();
+  const O = ok(as('own'));
+  await O('login');
+  assert.strictEqual((await O('updateProfile', { gender: 'f' })).gender, 'f');
+  assert.strictEqual((await as('own')('updateProfile', { gender: 'x' })).error, 'invalidGender');
+  const { clubId } = await O('createClub', { name: 'C' });
+  const ids = [];
+  for (let i = 0; i < 4; i++) ids.push((await O('addGuest', { clubId, name: 'g' + i })).userId);
+  const { eventId } = await O('createEvent', { clubId, title: 'T', startTime: 10, endTime: 20, courts: 1, capacity: 20, fee: 0 });
+  await O('signup', { eventId });
+  // 管理员不上场、只录分 → 双打裁判 1 场
+  const m1 = await O('addMatch', { eventId, teamA: [ids[0], ids[1]], teamB: [ids[2], ids[3]] });
+  await O('submitScore', { matchId: m1.matchId, scoreA: 11, scoreB: 4 });
+  // 自己上场的单打：不算裁判
+  const m2 = await O('addMatch', { eventId, teamA: ['own'], teamB: [ids[0]] });
+  await O('submitScore', { matchId: m2.matchId, scoreA: 11, scoreB: 7 });
+  await O('addMatch', { eventId, teamA: ['own'], teamB: [ids[1]] });
+  const p = await O('getPlayer', {});
+  assert.deepStrictEqual(p.umpire, { singles: 0, doubles: 1 });
+  const mm = await O('myMatches', {});
+  assert.strictEqual(mm.done.length, 1);
+  assert.strictEqual(mm.pending.length, 1);
+  assert.strictEqual(mm.done[0].event.title, 'T');
+  const me = await O('myEvents');
+  assert.deepStrictEqual([me.length, me[0].mySignup, me[0].clubName], [1, 'joined', 'C']);
+});

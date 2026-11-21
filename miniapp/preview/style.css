@@ -167,6 +167,60 @@ button:focus-visible, select:focus-visible, input:focus-visible, [data-act]:focu
 
 @media (prefers-reduced-motion: no-preference) {
   .sheet { animation: up 0.18s ease-out; }
-  @keyframes up { from { transform: translateY(24px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+  @keyframes up { from { transform: translateY(24px); } to { transform: none; } }
 }
 .score .lose { color: var(--muted); }
+
+/* 导航栏右上角：中 / EN 切换 */
+.langsw { justify-self: end; display: flex; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 999px; overflow: hidden; }
+.langsw button { background: none; border: 0; color: var(--nav-ink); font-size: 12px; padding: 3px 9px; cursor: pointer; opacity: 0.75; }
+.langsw button.on { background: var(--nav-ink); color: var(--nav); opacity: 1; font-weight: 600; }
+
+/* 中间凸起的「发起」 */
+.tabbar { overflow: visible; }
+.tabbar button.launch { color: var(--muted); position: relative; }
+.tabbar .plus { width: 44px; height: 44px; margin-top: -22px; border-radius: 50%; background: var(--btn); color: var(--btn-ink); display: grid; place-items: center; font-size: 24px; font-weight: 600; box-shadow: 0 0 0 4px var(--card), 0 4px 10px rgba(0, 0, 0, 0.15); }
+.scroll { overflow-x: hidden; }
+
+/* 我的 */
+.avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+.avatar { overflow: hidden; }
+.avatar.xl { width: 64px; height: 64px; font-size: 26px; }
+.avatar.xxl { width: 84px; height: 84px; font-size: 34px; }
+.me { position: relative; padding-top: 18px; }
+.me .edit { position: absolute; right: 12px; top: 10px; background: none; border: 0; color: var(--muted); font-size: 18px; cursor: pointer; padding: 4px 6px; }
+.who { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+.name-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.name-row .name { font-size: 17px; }
+.sex { font-weight: 700; font-size: 15px; }
+.sex.m { color: #3b82c4; }
+.sex.f { color: #d0578a; }
+.lv { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--btn); color: var(--btn-ink); white-space: nowrap; }
+.mstats { display: flex; margin-top: 14px; padding: 12px 0; border-block: 1px solid var(--line); }
+.mstats .half { flex: 1; display: flex; }
+.mstats .kv { flex: 1; text-align: center; }
+.mstats .k { font-size: 13px; }
+.mstats .v, .umpire .v { color: var(--clay); font-size: 16px; font-weight: 600; }
+.mstats .divider { width: 1px; background: var(--line); }
+.umpire { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; font-size: 13px; flex-wrap: wrap; }
+.umpire .v { font-size: 13px; }
+.note { margin-top: 6px; font-size: 11px; color: var(--muted); }
+.mgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 8px 4px; }
+.mgrid .cell { background: none; border: 0; padding: 12px 2px; font-size: 13px; color: var(--ink); display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; text-align: center; }
+.ic { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-size: 20px; }
+.ic.g { background: var(--accent-soft); }
+.ic.o { background: var(--clay-soft); }
+.ic.b { background: color-mix(in srgb, #3b82c4 16%, var(--card)); }
+.mlist { padding-block: 0; }
+.li { display: flex; align-items: center; gap: 12px; width: 100%; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 14px 0; font-size: 15px; color: var(--ink); cursor: pointer; text-align: left; }
+.li:last-child { border-bottom: 0; }
+.li-ic { font-size: 18px; }
+.arrow { color: var(--muted); font-size: 20px; }
+.avatar-pick { display: inline-flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; }
+.avatar-pick .link { font-size: 14px; }
+.wl.p { background: var(--accent-soft); color: var(--accent); }
+.lvnum { font-family: var(--display); font-size: 20px; color: var(--accent); width: 40px; flex-shrink: 0; }
+.titles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.titles > div { display: flex; align-items: center; gap: 8px; }
+.steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+.mode.row { display: flex; align-items: center; gap: 10px; }

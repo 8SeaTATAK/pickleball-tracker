@@ -8,6 +8,8 @@ const actions = {
   login: user.login,
   updateProfile: user.updateProfile,
   getPlayer: user.getPlayer,
+  myMatches: user.myMatches,
+  myEvents: user.myEvents,
 
   createClub: club.createClub,
   updateClub: club.updateClub,

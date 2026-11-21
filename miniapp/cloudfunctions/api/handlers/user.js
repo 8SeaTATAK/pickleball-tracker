@@ -1,4 +1,4 @@
-const { getDoc } = require('../lib/db');
+const { getDoc, listAll, getByIds } = require('../lib/db');
 const { MIN_RATING, reliability } = require('../lib/rating');
 const { fail, newRatingBlock, publicUser, usersMap, str } = require('./common');
 
@@ -28,13 +28,17 @@ async function login(ctx, params = {}) {
   return { ...publicUser(u), leveled: !!u.leveled };
 }
 
-async function updateProfile(ctx, { nickName, avatarUrl, level }) {
+async function updateProfile(ctx, { nickName, avatarUrl, gender, level }) {
   const { db, openid } = ctx;
   const u = await getDoc(db, 'users', openid);
   if (!u) fail('notLoggedIn');
   const data = {};
   if (nickName != null) data.nickName = str(nickName, 20, 'nickName', true);
   if (avatarUrl != null) data.avatarUrl = str(avatarUrl, 500, 'avatar');
+  if (gender != null) {
+    if (!['', 'm', 'f'].includes(gender)) fail('invalidGender');
+    data.gender = gender;
+  }
   if (level != null) {
     const lv = Number(level);
     if (!LEVELS.includes(lv)) fail('invalidLevel');
@@ -62,6 +66,14 @@ async function getPlayer(ctx, { userId }) {
   ).data;
   const people = await usersMap(ctx, matches.flatMap((m) => m.players));
 
+  // 裁判场次：本人录入比分、但自己不在场上的已完赛对局
+  const umpire = {};
+  for (const type of ['singles', 'doubles']) {
+    const all = await db.collection('matches').where({ recordedBy: id, status: 'done', type }).count();
+    const own = await db.collection('matches').where({ recordedBy: id, status: 'done', type, players: id }).count();
+    umpire[type] = all.total - own.total;
+  }
+
   const block = (b) => ({
     ...b,
     reliability: Math.round(reliability(b.games) * 100),
@@ -81,9 +93,63 @@ async function getPlayer(ctx, { userId }) {
       mySide: m.teamA.includes(id) ? 'A' : 'B',
       myDelta: ((m.ratingChanges || []).find((c) => c.id === id) || {}).delta || 0,
     })),
+    umpire,
     levels: LEVELS,
     minRating: MIN_RATING,
   };
 }
 
-module.exports = { login, updateProfile, getPlayer, LEVELS };
+const matchView = (m, people) => ({
+  _id: m._id,
+  eventId: m.eventId,
+  round: m.round,
+  court: m.court,
+  type: m.type,
+  status: m.status,
+  teamA: m.teamA.map((p) => people[p] || { _id: p, nickName: '?' }),
+  teamB: m.teamB.map((p) => people[p] || { _id: p, nickName: '?' }),
+  scoreA: m.scoreA,
+  scoreB: m.scoreB,
+  playedAt: m.playedAt,
+  ratingChanges: m.ratingChanges || [],
+});
+
+// 我的比赛：待打的（未结束活动里的未录分对局）+ 已完赛（分页）
+async function myMatches(ctx, { skip = 0 }) {
+  const { db, _, openid } = ctx;
+  const page = 30;
+  const done = (
+    await db.collection('matches').where({ players: openid, status: 'done' }).orderBy('playedAt', 'desc').skip(Number(skip) || 0).limit(page + 1).get()
+  ).data;
+  let pending = [];
+  if (!skip) {
+    pending = (await db.collection('matches').where({ players: openid, status: 'pending' }).orderBy('createdAt', 'desc').limit(50).get()).data;
+    const evs = await getByIds(db, _, 'events', pending.map((m) => m.eventId));
+    const open = new Set(evs.filter((e) => e.status !== 'finished').map((e) => e._id));
+    pending = pending.filter((m) => open.has(m.eventId)).sort((a, b) => a.round - b.round || a.court - b.court);
+  }
+  const list = done.slice(0, page);
+  const people = await usersMap(ctx, [...list, ...pending].flatMap((m) => m.players));
+  const events = await getByIds(db, _, 'events', [...list, ...pending].map((m) => m.eventId));
+  const titles = {};
+  events.forEach((e) => (titles[e._id] = { title: e.title, startTime: e.startTime }));
+  const view = (m) => ({ ...matchView(m, people), event: titles[m.eventId] || null });
+  return { pending: pending.map(view), done: list.map(view), hasMore: done.length > page };
+}
+
+// 我的活动：报过名（未取消）的活动，最近的在前
+async function myEvents(ctx) {
+  const { db, _, openid } = ctx;
+  const sign = (await listAll(db.collection('signups').where({ userId: openid }), 500)).filter((s) => s.status !== 'cancelled');
+  const events = await getByIds(db, _, 'events', sign.map((s) => s.eventId));
+  const clubs = await getByIds(db, _, 'clubs', events.map((e) => e.clubId));
+  const names = {};
+  clubs.forEach((c) => (names[c._id] = c.name));
+  const st = {};
+  sign.forEach((s) => (st[s.eventId] = s.status));
+  return events
+    .map((e) => ({ ...e, clubName: names[e.clubId] || '', mySignup: st[e._id] }))
+    .sort((a, b) => b.startTime - a.startTime);
+}
+
+module.exports = { login, updateProfile, getPlayer, myMatches, myEvents, LEVELS };

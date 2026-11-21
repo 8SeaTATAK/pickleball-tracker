@@ -9,7 +9,7 @@ const fmt = __req('fmt');
 const { predict } = __req('predict');
 
 const ME = 'me';
-const STORE = 'pp_state_v1';
+const STORE = 'pp_state_v2';
 const DAY = 86400000;
 
 // 预览专用文案
@@ -39,6 +39,7 @@ const PEOPLE = [
   ['chen', '陈老师', 4.6, 4.5, true],
   ['sarah', 'Sarah', 2.8, 2.5, true],
 ];
+const FEMALE = ['alice', 'linh', 'nurul', 'emily', 'sarah'];
 const COLORS = ['#216b43', '#b95c30', '#3c6e9c', '#7b5aa6', '#a0722a', '#2f8a83', '#a64b6b', '#58753a'];
 
 function seed() {
@@ -48,7 +49,7 @@ function seed() {
   PEOPLE.forEach(([id, name, real, lv, guest], i) => {
     truth[id] = real;
     const blk = () => ({ rating: lv, games: 0, wins: 0, losses: 0 });
-    st.users[id] = { _id: id, nickName: name, guest: !!guest, color: COLORS[i % COLORS.length], doubles: blk(), singles: blk() };
+    st.users[id] = { _id: id, nickName: name, gender: FEMALE.includes(id) ? 'f' : 'm', avatarUrl: '', guest: !!guest, color: COLORS[i % COLORS.length], doubles: blk(), singles: blk() };
   });
   st.clubs.push(
     { _id: 'c1', name: 'North Ryde Pickleball', city: 'Sydney', inviteCode: 'NR7K2P', intro: '每周六上午 Tennis World North Ryde · Saturday mornings, all levels welcome', settings: { winPoints: 3, lossPoints: 1, currency: 'A$' } },
@@ -81,7 +82,7 @@ function seed() {
         let a = 0;
         let b = 0;
         while (!((a >= 11 || b >= 11) && Math.abs(a - b) >= 2)) rand() < pa ? a++ : b++;
-        applyScore(st, m, a, b, start + (r.round - 1) * 18 * 60000);
+        applyScore(st, m, a, b, start + (r.round - 1) * 18 * 60000, r.rest.includes(ME) && rand() < 0.7 ? ME : g.teamA[0]);
       }
     }
   }
@@ -147,7 +148,7 @@ function revert(st, m) {
   st.history = st.history.filter((h) => h.matchId !== m._id);
 }
 
-function applyScore(st, m, a, b, at) {
+function applyScore(st, m, a, b, at, by) {
   if (m.status === 'done') revert(st, m);
   const side = (team) => team.map((id) => ({ id, rating: st.users[id][m.type].rating, games: st.users[id][m.type].games }));
   const r = R.rateMatch({ teamA: side(m.teamA), teamB: side(m.teamB), scoreA: a, scoreB: b });
@@ -160,7 +161,7 @@ function applyScore(st, m, a, b, at) {
     else blk.losses++;
   }
   const when = m.playedAt || at || Date.now();
-  Object.assign(m, { scoreA: a, scoreB: b, status: 'done', ratingChanges: r.changes, playedAt: when });
+  Object.assign(m, { scoreA: a, scoreB: b, status: 'done', ratingChanges: r.changes, playedAt: when, recordedBy: by || ME });
   r.changes.forEach((c) => st.history.push({ userId: c.id, matchId: m._id, type: m.type, before: c.before, after: c.after, delta: c.delta, at: when }));
   return r;
 }
@@ -193,6 +194,7 @@ const waitOf = (eid) => st.signups.filter((s) => s.eventId === eid && s.status =
 const currency = (clubId) => (clubOf(clubId).settings.currency || 'A$');
 
 function avatar(u, cls = '') {
+  if (u.avatarUrl) return `<div class="avatar ${cls}"><img src="${u.avatarUrl}" alt=""></div>`;
   return `<div class="avatar ${cls}" style="background:${u.color}">${esc(u.nickName[0])}</div>`;
 }
 
@@ -412,7 +414,7 @@ function viewProfile(t, uid) {
   return `
   <div class="card"><div class="row">${avatar(u, 'lg')}<div class="grow">
     <div class="bold" style="font-size:19px">${esc(u.nickName)}${u.guest ? `<span class="tag gray">${t.guestPlayer}</span>` : ''}</div>
-    ${self ? `<div class="muted">${t.tapAvatar}</div>` : ''}</div></div></div>
+    <div class="muted">${esc(i18n.levelTitle(u.doubles))}</div></div></div></div>
   <div class="tabs">${['doubles', 'singles'].map((k) => `<button class="${type === k ? 'on' : ''}" data-act="ptype" data-k="${k}">${t[k]}</button>`).join('')}</div>
   <div class="card">
     <div class="row between"><div><div class="muted">${esc(f(t.ratingSim, type === 'doubles' ? t.doublesRating : t.singlesRating))}</div>
@@ -446,12 +448,7 @@ function viewProfile(t, uid) {
           .join('')
       : `<div class="empty">${t.noGames}</div>`
   }</div>
-  ${
-    self
-      ? `<div class="card"><div class="field"><label for="lang">🌐 ${t.language}</label>
-      <select id="lang" class="lang-select" data-change="lang">${i18n.LANG_NAMES.map((n, i) => `<option value="${i18n.LANGS[i]}" ${i18n.LANGS[i] === i18n.getLang() ? 'selected' : ''}>${n}</option>`).join('')}</select></div></div>`
-      : ''
-  }`;
+}`;
 }
 
 // 评分走势折线（SVG，颜色取主题变量）
@@ -494,10 +491,151 @@ function viewRules(t) {
   <div class="card"><div class="h">${t.r_t5}</div><div class="p">${t.r_p8}</div><div class="p muted">${t.r_disclaimer}</div></div>`;
 }
 
+
+// ---------------- 我的（菜单页） ----------------
+function viewMe(t) {
+  const u = st.users[ME];
+  const rate = (b) => (b.games ? Math.round((b.wins / b.games) * 100) : 0);
+  const ump = (type) => st.matches.filter((m) => m.status === 'done' && m.type === type && m.recordedBy === ME && !m.players.includes(ME)).length;
+  const cell = (act, ic, tone, label, extra = '') => `<button class="cell" data-act="${act}" ${extra}><span class="ic ${tone}">${ic}</span><span>${label}</span></button>`;
+  const li = (act, ic, label) => `<button class="li" data-act="${act}"><span class="li-ic">${ic}</span><span class="grow">${label}</span><span class="arrow">›</span></button>`;
+  return `
+  <div class="card me">
+    <button class="edit" data-act="edit" aria-label="${t.editProfile}">✎</button>
+    <div class="who" data-act="edit" role="button" tabindex="0">
+      ${avatar(u, 'xl')}
+      <div class="name-row"><span class="bold name">${esc(u.nickName)}</span>${u.gender === 'm' ? '<span class="sex m">♂</span>' : u.gender === 'f' ? '<span class="sex f">♀</span>' : ''}<span class="lv">${esc(i18n.levelTitle(u.doubles))}</span></div>
+      <div class="muted num">${esc(f(t.ratingsLine, fmt.ratingLabel(u.doubles), fmt.ratingLabel(u.singles)))}</div>
+    </div>
+    <div class="mstats">
+      <div class="half"><div class="kv"><div class="k">${t.singles}</div><div class="v num">${f(t.gamesCount, u.singles.games)}</div></div><div class="kv"><div class="k">${t.colWinRate}</div><div class="v num">${rate(u.singles)}%</div></div></div>
+      <div class="divider"></div>
+      <div class="half"><div class="kv"><div class="k">${t.doubles}</div><div class="v num">${f(t.gamesCount, u.doubles.games)}</div></div><div class="kv"><div class="k">${t.colWinRate}</div><div class="v num">${rate(u.doubles)}%</div></div></div>
+    </div>
+    <div class="umpire"><span>${t.umpireSingles}: <b class="v num">${f(t.gamesCount, ump('singles'))}</b></span><span>${t.umpireDoubles}: <b class="v num">${f(t.gamesCount, ump('doubles'))}</b></span></div>
+    <div class="note">${t.finishedOnly}</div>
+  </div>
+  <div class="card mgrid">
+    ${cell('myEvents', '📅', 'g', t.menu_events)}
+    ${cell('myMatches', '🏓', 'o', t.menu_matches)}
+    ${cell('player', '📈', 'b', t.menu_rating, `data-id="${ME}"`)}
+    ${cell('guide', '🏅', 'g', t.menu_levels, 'data-topic="levels"')}
+    ${cell('guide', '🔄', 'o', t.menu_formats, 'data-topic="formats"')}
+    ${cell('guide', '🧭', 'b', t.menu_guide, 'data-topic="start"')}
+    ${cell('tab', '🏠', 'g', t.myClubs, 'data-tab="home"')}
+    ${cell('rules', '📐', 'o', t.rulesLink)}
+    ${cell('na', '💬', 'b', t.menu_contact)}
+  </div>
+  <div class="card mlist">
+    ${li('edit', '✏️', t.editProfile)}
+    ${li('na', '✍️', t.menu_feedback)}
+    ${li('na', '🤝', t.menu_invite)}
+  </div>`;
+}
+
+function viewEdit(t) {
+  const e = ui.edit;
+  const u = { ...st.users[ME], avatarUrl: e.avatarUrl, nickName: e.nickName || st.users[ME].nickName };
+  const canLevel = !st.users[ME].doubles.games && !st.users[ME].singles.games;
+  const LV = [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0];
+  const lk = (l) => 'level_' + String(l).replace('.', '').replace(/0$/, '');
+  return `
+  <div class="card center">
+    <label class="avatar-pick" for="avatarFile">${avatar(u, 'xxl')}<span class="link">${t.changeAvatar}</span></label>
+    <input id="avatarFile" type="file" accept="image/*" data-change="avatar" hidden>
+  </div>
+  <div class="card">
+    <div class="field"><label for="nick">${t.nickname}</label><input id="nick" maxlength="20" placeholder="${t.nicknamePh}" value="${esc(e.nickName)}" data-input="nick"></div>
+    <div class="field"><label for="gender">${t.gender}</label><select id="gender" data-change="gender">${['', 'm', 'f'].map((g) => `<option value="${g}" ${e.gender === g ? 'selected' : ''}>${t['gender_' + g]}</option>`).join('')}</select></div>
+    ${canLevel ? `<div class="field"><label for="level">${t.startLevel}</label><select id="level" data-change="level">${LV.map((l) => `<option value="${l}" ${e.level === l ? 'selected' : ''}>${l.toFixed(1)} ${t[lk(l)]}</option>`).join('')}</select></div>` : ''}
+  </div>
+  ${canLevel ? `<div class="muted" style="padding:0 4px">${t.setLevelDesc}</div>` : ''}
+  <button class="btn" data-act="saveEdit">${t.save}</button>`;
+}
+
+function eventItem(t, e) {
+  const mine = st.signups.find((s) => s.eventId === e._id && s.userId === ME && s.status !== 'cancelled');
+  return `<div class="item" data-act="event" data-id="${e._id}" role="button" tabindex="0"><div class="grow">
+    <div class="ellipsis"><span class="bold">${esc(e.title)}</span><span class="tag ${e.status === 'playing' ? 'clay' : e.status === 'finished' ? 'gray' : ''}">${fmt.status(e.status)}</span>${mine ? `<span class="tag gray">${t['signed_' + mine.status]}</span>` : ''}</div>
+    <div class="muted">${esc(clubOf(e.clubId).name)} · ${fmt.range(e.startTime, e.endTime)}</div></div>
+    <div class="muted num">${joinedOf(e._id).length}/${e.capacity}</div></div>`;
+}
+
+function viewMyEvents(t) {
+  const ids = new Set(st.signups.filter((s) => s.userId === ME && s.status !== 'cancelled').map((s) => s.eventId));
+  const evs = st.events.filter((e) => ids.has(e._id)).sort((a, b) => b.startTime - a.startTime);
+  return `<div class="card flush">${evs.length ? evs.map((e) => eventItem(t, e)).join('') : `<div class="empty">${t.noMyEvents}</div>`}</div>`;
+}
+
+function viewMyMatches(t) {
+  const mine = st.matches.filter((m) => m.players.includes(ME));
+  const pending = mine.filter((m) => m.status !== 'done' && eventOf(m.eventId).status !== 'finished').sort((a, b) => a.round - b.round || a.court - b.court);
+  const done = mine.filter((m) => m.status === 'done').sort((a, b) => b.playedAt - a.playedAt);
+  const row = (m) => {
+    const e = eventOf(m.eventId);
+    const a = m.teamA.includes(ME);
+    const sep = i18n.getLang() === 'zh' ? '、' : ', ';
+    const names = (team) => team.map((p) => esc(st.users[p].nickName)).join(sep);
+    const ok = m.status === 'done';
+    const won = ok && (a ? m.scoreA > m.scoreB : m.scoreB > m.scoreA);
+    const d = ((m.ratingChanges || []).find((c) => c.id === ME) || {}).delta || 0;
+    return `<div class="item" data-act="event" data-id="${e._id}" role="button" tabindex="0">
+      ${ok ? `<div class="wl ${won ? 'w' : 'l'}">${won ? t.winShort : t.lossShort}</div>` : `<div class="wl p">${m.round}</div>`}
+      <div class="grow"><div class="ellipsis">${names(a ? m.teamA : m.teamB)} <span class="muted">vs</span> ${names(a ? m.teamB : m.teamA)}</div>
+      <div class="muted ellipsis">${fmt.shortDate(e.startTime)} · ${f(t.roundN, m.round)} · ${f(t.courtN, m.court)}</div></div>
+      <div class="center">${ok ? `<div class="bold num">${a ? m.scoreA + ':' + m.scoreB : m.scoreB + ':' + m.scoreA}</div><div class="d ${d > 0 ? 'up' : d < 0 ? 'down' : 'muted'}">${fmt.delta(d)}</div>` : `<span class="tag">${t.enterScore}</span>`}</div></div>`;
+  };
+  return `${pending.length ? `<div class="section-title">${t.upNext}</div><div class="card flush">${pending.map(row).join('')}</div>` : ''}
+  <div class="section-title">${t.finishedGames}</div>
+  <div class="card flush">${done.length ? done.map(row).join('') : `<div class="empty">${t.noGames}</div>`}</div>`;
+}
+
+function viewGuide(t, topic) {
+  if (topic === 'levels') {
+    const LV = [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0];
+    const lk = (l) => 'level_' + String(l).replace('.', '').replace(/0$/, '');
+    const titles = [['lv_newbie', '< 6 ' + t.games], ['lv_1', '< 3.0'], ['lv_2', '3.0+'], ['lv_3', '3.5+'], ['lv_4', '4.0+'], ['lv_5', '4.5+']];
+    return `<div class="card"><div class="p" style="margin-top:0">${t.lv_intro}</div></div>
+    <div class="card flush">${LV.map((l) => `<div class="item" style="cursor:default"><span class="lvnum num">${l.toFixed(1)}</span><span class="grow">${t[lk(l)]}</span></div>`).join('')}</div>
+    <div class="card"><div class="h">${t.lv_titles}</div><div class="p" style="margin-top:0">${t.lv_titles_d}</div>
+      <div class="titles">${titles.map(([k, r]) => `<div><span class="lv">${t[k]}</span><span class="muted num">${r}</span></div>`).join('')}</div></div>`;
+  }
+  if (topic === 'formats') {
+    return `<div class="card"><div class="p" style="margin-top:0">${t.f_intro}</div></div>
+    <div class="card flush">${['rotation', 'balanced', 'fixed', 'singles', 'singlesRR'].map((k) => `<div class="item" style="cursor:default"><div class="grow"><div class="bold">${t['mode_' + k]}</div><div class="muted">${t['mode_' + k + '_d']}</div></div></div>`).join('')}</div>
+    <div class="card"><div class="p" style="margin-top:0">💡 ${t.f_tip}</div></div>`;
+  }
+  return `<div class="card"><ol class="steps">${[1, 2, 3, 4, 5].map((n) => `<li>${t['g_' + n]}</li>`).join('')}</ol></div>
+  <div class="card"><div class="h">${t.g_adminTitle}</div><div class="p" style="margin-top:0">${t.g_admin}</div></div>`;
+}
+
+// 头像：读本地图片，居中裁成 160×160 再存，避免撑爆浏览器存储
+function readAvatar(file, done) {
+  const fr = new FileReader();
+  fr.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = c.height = 160;
+      const k = Math.min(img.width, img.height);
+      c.getContext('2d').drawImage(img, (img.width - k) / 2, (img.height - k) / 2, k, k, 0, 0, 160, 160);
+      done(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.src = fr.result;
+  };
+  fr.readAsDataURL(file);
+}
+
 // ---------------- 弹层 ----------------
 function sheetHtml(t) {
   const s = ui.sheet;
   if (!s) return '';
+  if (s.kind === 'launch') {
+    const opt = (ic, label) => `<button class="mode row" data-act="na"><span class="li-ic">${ic}</span><span class="bold">${label}</span></button>`;
+    return `<div class="mask" data-act="closeSheet"><div class="sheet" data-stop="1">
+      <h3>${t.launch}</h3>${opt('📣', t.newEventTitle)}${opt('🏠', t.createClub)}${opt('🔑', t.joinByCode)}
+      <button class="btn ghost" data-act="closeSheet">${t.cancel}</button></div></div>`;
+  }
   if (s.kind === 'gen') {
     const e = eventOf(s.eventId);
     const modes = ['rotation', 'balanced', 'fixed', 'singles', 'singlesRR'];
@@ -539,7 +677,7 @@ function render() {
     if (ui.tab === 'home') html = viewHome(t);
     else {
       title = t.tabMe;
-      html = viewProfile(t, ME);
+      html = viewMe(t);
     }
   } else if (v.view === 'club') {
     title = clubOf(v.id).name;
@@ -548,8 +686,20 @@ function render() {
     title = eventOf(v.id).title;
     html = viewEvent(t, v.id);
   } else if (v.view === 'player') {
-    title = st.users[v.id].nickName;
+    title = v.id === ME ? t.menu_rating : st.users[v.id].nickName;
     html = viewProfile(t, v.id);
+  } else if (v.view === 'edit') {
+    title = t.editProfile;
+    html = viewEdit(t);
+  } else if (v.view === 'myEvents') {
+    title = t.menu_events;
+    html = viewMyEvents(t);
+  } else if (v.view === 'myMatches') {
+    title = t.menu_matches;
+    html = viewMyMatches(t);
+  } else if (v.view === 'guide') {
+    title = t[{ levels: 'menu_levels', formats: 'menu_formats', start: 'menu_guide' }[v.topic]];
+    html = viewGuide(t, v.topic);
   } else {
     title = t.r_nav;
     html = viewRules(t);
@@ -557,10 +707,11 @@ function render() {
   const icon = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   document.getElementById('app').innerHTML = `
     <div class="banner"><span>${px('banner')}</span><button data-act="reset">${px('reset')}</button></div>
-    <div class="nav">${ui.stack.length ? `<button class="back" data-act="back" aria-label="Back">‹</button>` : '<span></span>'}<div class="title">${esc(title)}</div><div class="capsule" aria-hidden="true">•••<span>◎</span></div></div>
+    <div class="nav">${ui.stack.length ? `<button class="back" data-act="back" aria-label="Back">‹</button>` : '<span></span>'}<div class="title">${esc(title)}</div><div class="langsw" role="group" aria-label="Language">${[['zh', '中'], ['en', 'EN']].map(([l, n]) => `<button class="${i18n.getLang() === l ? 'on' : ''}" data-act="lang" data-l="${l}">${n}</button>`).join('')}</div></div>
     <div class="scroll" id="scroll"><div class="page">${html}</div></div>
     ${ui.stack.length ? '' : `<nav class="tabbar">
       <button class="${ui.tab === 'home' ? 'on' : ''}" data-act="tab" data-tab="home">${icon('<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>')}${t.tabHome}</button>
+      <button class="launch" data-act="launch"><span class="plus">＋</span>${t.launch}</button>
       <button class="${ui.tab === 'me' ? 'on' : ''}" data-act="tab" data-tab="me">${icon('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>')}${t.tabMe}</button></nav>`}
     ${sheetHtml(t)}
     <div id="toast" class="toast" hidden></div>`;
@@ -608,12 +759,49 @@ const actions = {
     go({ view: 'event', id: d.id });
   },
   player(d) {
-    if (d.id === ME && !ui.stack.length) return;
     ui.ptype = 'doubles';
     go({ view: 'player', id: d.id });
   },
   rules() {
     go({ view: 'rules' });
+  },
+  lang(d) {
+    i18n.setLang(d.l);
+    document.documentElement.lang = d.l;
+    rerender();
+  },
+  launch() {
+    ui.sheet = { kind: 'launch' };
+    rerender();
+  },
+  myEvents() {
+    go({ view: 'myEvents' });
+  },
+  myMatches() {
+    go({ view: 'myMatches' });
+  },
+  guide(d) {
+    go({ view: 'guide', topic: d.topic });
+  },
+  edit() {
+    const u = st.users[ME];
+    ui.edit = { avatarUrl: u.avatarUrl || '', nickName: u.nickName, gender: u.gender || '', level: 3.5 };
+    go({ view: 'edit' });
+  },
+  saveEdit() {
+    const e = ui.edit;
+    const name = (e.nickName || '').trim();
+    if (!name) return toast(i18n.errMsg('required', { field: 'nickName' }));
+    const u = st.users[ME];
+    Object.assign(u, { nickName: name.slice(0, 20), gender: e.gender, avatarUrl: e.avatarUrl });
+    if (!u.doubles.games && !u.singles.games) {
+      u.doubles.rating = e.level;
+      u.singles.rating = e.level;
+    }
+    save();
+    ui.stack.pop();
+    render();
+    toast(i18n.t('saved'));
   },
   na() {
     toast(px('notInPreview'));
@@ -752,7 +940,7 @@ const actions = {
     const err = R.validateScore(a, b);
     if (err) return toast(i18n.errMsg(err));
     const m = st.matches.find((x) => x._id === ui.sheet.matchId);
-    const r = applyScore(st, m, a, b);
+    const r = applyScore(st, m, a, b, Date.now(), ME);
     const mine = r.changes.find((c) => c.id === ME);
     ui.sheet = null;
     save();
@@ -785,11 +973,19 @@ app.addEventListener('keydown', (ev) => {
   }
 });
 app.addEventListener('change', (ev) => {
-  if (ev.target.dataset.change === 'lang') {
-    i18n.setLang(ev.target.value);
-    document.documentElement.lang = ev.target.value;
-    render();
+  const k = ev.target.dataset.change;
+  if (!k || !ui.edit) return;
+  if (k === 'gender') ui.edit.gender = ev.target.value;
+  if (k === 'level') ui.edit.level = Number(ev.target.value);
+  if (k === 'avatar' && ev.target.files && ev.target.files[0]) {
+    readAvatar(ev.target.files[0], (url) => {
+      ui.edit.avatarUrl = url;
+      rerender();
+    });
   }
+});
+app.addEventListener('input', (ev) => {
+  if (ev.target.dataset.input === 'nick' && ui.edit) ui.edit.nickName = ev.target.value;
 });
 
 document.documentElement.lang = i18n.getLang();
