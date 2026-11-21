@@ -35,6 +35,10 @@ K       = 0.50 → 0.12，随场次线性降低（20 场可靠度 100%）
 
 参数都在 `cloudfunctions/api/lib/rating.js` 顶部，可以按俱乐部实际情况调。
 
+## 产品规则
+
+已确定、还没实现的规则记在 [PRODUCT_RULES.md](PRODUCT_RULES.md)，比如头像和昵称每月只能改一次。
+
 ## 多语言
 
 - 所有界面文字在 `miniprogram/utils/i18n.js`，每条是 `[中文, English, Tiếng Việt, Bahasa Melayu]`。改文案、加语言都只改这一个文件。
