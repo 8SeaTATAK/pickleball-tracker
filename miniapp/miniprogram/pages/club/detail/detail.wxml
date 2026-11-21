@@ -1,0 +1,126 @@
+<view class="page" wx:if="{{club}}">
+  <view class="card">
+    <view class="row gap">
+      <view class="avatar big">{{club.name[0]}}</view>
+      <view class="grow">
+        <view class="bold title">{{club.name}}</view>
+        <view class="muted">{{club.city ? club.city + ' · ' : ''}}{{club.memberCount}} 名成员</view>
+      </view>
+      <text class="tag" wx:if="{{myRole && myRole != 'member'}}">{{myRole == 'owner' ? '创建者' : '管理员'}}</text>
+    </view>
+    <view class="intro" wx:if="{{club.intro}}">{{club.intro}}</view>
+    <view class="row between invite" wx:if="{{myRole}}">
+      <text class="muted">邀请码 <text class="code" bindtap="copyCode">{{club.inviteCode}}</text>（点击复制）</text>
+      <button class="btn mini ghost" open-type="share">分享邀请</button>
+    </view>
+    <button class="btn join" wx:if="{{!myRole}}" bindtap="join">加入俱乐部</button>
+  </view>
+
+  <block wx:if="{{myRole}}">
+    <view class="tabs">
+      <view class="tab {{tab == 'events' ? 'on' : ''}}" data-tab="events" bindtap="switchTab">活动</view>
+      <view class="tab {{tab == 'board' ? 'on' : ''}}" data-tab="board" bindtap="switchTab">积分榜</view>
+      <view class="tab {{tab == 'members' ? 'on' : ''}}" data-tab="members" bindtap="switchTab">成员</view>
+    </view>
+
+    <!-- 活动 -->
+    <block wx:if="{{tab == 'events'}}">
+      <button class="btn" wx:if="{{isAdmin}}" bindtap="newEvent">＋ 发布活动</button>
+      <view class="card list" wx:if="{{events.length}}">
+        <view class="list-item" wx:for="{{events}}" wx:key="_id" data-id="{{item._id}}" bindtap="goEvent">
+          <view class="grow">
+            <view class="row">
+              <text class="bold ellipsis">{{item.title}}</text>
+              <text class="tag {{item.status == 'playing' ? 'clay' : item.status == 'finished' ? 'gray' : ''}}">{{item.statusText}}</text>
+            </view>
+            <view class="muted">{{item.when}}{{item.location ? ' · ' + item.location : ''}}</view>
+          </view>
+          <view class="muted">{{item.joinedCount}}/{{item.capacity}}</view>
+        </view>
+      </view>
+      <view class="card empty list" wx:else>还没有活动</view>
+    </block>
+
+    <!-- 积分榜 -->
+    <block wx:if="{{tab == 'board'}}">
+      <view class="tabs small-tabs">
+        <view class="tab {{period == 'week' ? 'on' : ''}}" data-p="week" bindtap="switchPeriod">近 7 天</view>
+        <view class="tab {{period == 'month' ? 'on' : ''}}" data-p="month" bindtap="switchPeriod">近 30 天</view>
+        <view class="tab {{period == 'all' ? 'on' : ''}}" data-p="all" bindtap="switchPeriod">全部</view>
+      </view>
+      <view class="card">
+        <view class="table" wx:if="{{board.length}}">
+          <view class="tr th">
+            <text class="rank">#</text>
+            <text class="name">球员</text>
+            <text class="c">胜-负</text>
+            <text class="c">胜率</text>
+            <text class="c">净胜</text>
+            <text class="c">积分</text>
+          </view>
+          <view class="tr" wx:for="{{board}}" wx:key="userId" data-id="{{item.userId}}" bindtap="tapBoard">
+            <text class="rank {{item.rank <= 3 ? 'top' : ''}}">{{item.rank}}</text>
+            <view class="name"><text class="ellipsis">{{item.user.nickName}}</text></view>
+            <text class="c">{{item.wins}}-{{item.losses}}</text>
+            <text class="c">{{item.winRate}}%</text>
+            <text class="c {{item.diff > 0 ? 'up' : item.diff < 0 ? 'down' : ''}}">{{item.diff > 0 ? '+' : ''}}{{item.diff}}</text>
+            <text class="c bold">{{item.score}}</text>
+          </view>
+        </view>
+        <view class="empty" wx:else>这段时间还没有比赛记录</view>
+        <view class="muted rule" wx:if="{{settings}}">积分 = 胜场 × {{settings.winPoints}} + 负场 × {{settings.lossPoints}}；同分看胜率、净胜分</view>
+      </view>
+    </block>
+
+    <!-- 成员 -->
+    <block wx:if="{{tab == 'members'}}">
+      <button class="btn ghost" wx:if="{{isAdmin}}" bindtap="openGuest">＋ 添加临时球员（无需微信）</button>
+      <view class="card list">
+        <view class="list-item" wx:for="{{members}}" wx:key="_id" data-i="{{index}}" bindtap="tapMember">
+          <view class="avatar">
+            <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill" />
+            <text wx:else>{{item.nickName[0]}}</text>
+          </view>
+          <view class="grow">
+            <view class="row">
+              <text class="bold ellipsis">{{item.nickName}}</text>
+              <text class="tag" wx:if="{{item.roleText}}">{{item.roleText}}</text>
+              <text class="tag gray" wx:if="{{item.guest}}">临时</text>
+            </view>
+            <view class="muted">双打 {{item.doubles.wins}}胜{{item.doubles.losses}}负</view>
+          </view>
+          <view class="center">
+            <view class="bold rating">{{item.ratingText}}</view>
+            <view class="muted">双打评分</view>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <view class="btn-row" wx:if="{{isAdmin || myRole == 'member'}}">
+      <button class="btn ghost" wx:if="{{isAdmin}}" bindtap="settingsPage">俱乐部设置</button>
+      <button class="btn warn" wx:if="{{myRole != 'owner'}}" bindtap="leave">退出俱乐部</button>
+    </view>
+  </block>
+</view>
+
+<view class="mask" wx:if="{{showGuest}}" bindtap="closeGuest">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-title">添加临时球员</view>
+    <view class="field">
+      <text class="label">姓名</text>
+      <input placeholder="球员称呼" placeholder-class="placeholder" maxlength="20" value="{{guestName}}" bindinput="onGuestName" />
+    </view>
+    <view class="field">
+      <text class="label">起始水平</text>
+      <picker range="{{levels}}" value="{{guestLevel}}" bindchange="onGuestLevel">
+        <view>{{levels[guestLevel]}} ›</view>
+      </picker>
+    </view>
+    <view class="muted">临时球员同样参与对阵、积分榜和评分，由管理员代为报名和录分。</view>
+    <view class="btn-row">
+      <button class="btn ghost" bindtap="closeGuest">取消</button>
+      <button class="btn" bindtap="addGuest" disabled="{{!guestName}}">添加</button>
+    </view>
+  </view>
+</view>

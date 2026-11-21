@@ -1,0 +1,77 @@
+<view class="page">
+  <!-- 我的评分 -->
+  <view class="card hero" wx:if="{{user}}" bindtap="goProfile">
+    <view class="row gap">
+      <view class="avatar">
+        <image wx:if="{{user.avatarUrl}}" src="{{user.avatarUrl}}" mode="aspectFill" />
+        <text wx:else>{{user.nickName[0]}}</text>
+      </view>
+      <view class="grow">
+        <view class="bold">{{user.nickName}}</view>
+        <view class="muted" wx:if="{{!user.leveled && user.doubles.games == 0}}">点这里设置你的起始水平 ›</view>
+        <view class="muted" wx:else>双打 {{user.doubles.games}} 场 · 单打 {{user.singles.games}} 场</view>
+      </view>
+    </view>
+    <view class="row ratings">
+      <view class="grow">
+        <view class="muted">双打评分</view>
+        <view class="rating-big">{{user.doublesText}}</view>
+      </view>
+      <view class="grow">
+        <view class="muted">单打评分</view>
+        <view class="rating-big">{{user.singlesText}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section-title">
+    <text>近期活动</text>
+  </view>
+  <view class="card" wx:if="{{events.length}}">
+    <view class="list-item" wx:for="{{events}}" wx:key="_id" data-id="{{item._id}}" bindtap="goEvent">
+      <view class="grow">
+        <view class="row">
+          <text class="bold ellipsis">{{item.title}}</text>
+          <text class="tag {{item.status == 'playing' ? 'clay' : ''}}">{{item.statusText}}</text>
+          <text class="tag gray" wx:if="{{item.signText}}">{{item.signText}}</text>
+        </view>
+        <view class="muted">{{item.clubName}} · {{item.when}}</view>
+        <view class="muted" wx:if="{{item.location}}">📍 {{item.location}}</view>
+      </view>
+      <view class="muted">{{item.joinedCount}}/{{item.capacity}}</view>
+    </view>
+  </view>
+  <view class="card empty" wx:elif="{{loaded}}">暂无活动，去俱乐部看看吧</view>
+
+  <view class="section-title">
+    <text>我的俱乐部</text>
+    <text class="link" bindtap="goRules">评分规则</text>
+  </view>
+  <view class="card" wx:if="{{clubs.length}}">
+    <view class="list-item" wx:for="{{clubs}}" wx:key="_id" data-id="{{item._id}}" bindtap="goClub">
+      <view class="avatar">{{item.name[0]}}</view>
+      <view class="grow">
+        <view class="bold ellipsis">{{item.name}}</view>
+        <view class="muted">{{item.city ? item.city + ' · ' : ''}}{{item.memberCount}} 名成员</view>
+      </view>
+      <text class="tag" wx:if="{{item.myRole != 'member'}}">{{item.myRole == 'owner' ? '创建者' : '管理员'}}</text>
+    </view>
+  </view>
+  <view class="card empty" wx:elif="{{loaded}}">还没有加入俱乐部</view>
+
+  <view class="btn-row">
+    <button class="btn" bindtap="goCreate">创建俱乐部</button>
+    <button class="btn ghost" bindtap="openJoin">邀请码加入</button>
+  </view>
+</view>
+
+<view class="mask" wx:if="{{showJoin}}" bindtap="closeJoin">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-title">输入俱乐部邀请码</view>
+    <input class="code-input" placeholder="6 位邀请码" maxlength="6" value="{{code}}" bindinput="onCode" focus />
+    <view class="btn-row">
+      <button class="btn ghost" bindtap="closeJoin">取消</button>
+      <button class="btn" bindtap="join" disabled="{{!code}}">加入</button>
+    </view>
+  </view>
+</view>

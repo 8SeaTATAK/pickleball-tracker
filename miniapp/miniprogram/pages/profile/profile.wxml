@@ -1,0 +1,83 @@
+<view class="page" wx:if="{{user}}">
+  <view class="card">
+    <view class="row gap">
+      <button wx:if="{{self && !user.guest}}" class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+        <view class="avatar big">
+          <image wx:if="{{user.avatarUrl}}" src="{{user.avatarUrl}}" mode="aspectFill" />
+          <text wx:else>{{user.nickName[0]}}</text>
+        </view>
+      </button>
+      <view class="avatar big" wx:else>
+        <image wx:if="{{user.avatarUrl}}" src="{{user.avatarUrl}}" mode="aspectFill" />
+        <text wx:else>{{user.nickName[0]}}</text>
+      </view>
+      <view class="grow">
+        <input wx:if="{{editingName}}" type="nickname" class="name-input" value="{{user.nickName}}" focus maxlength="20" bindblur="saveName" bindconfirm="saveName" />
+        <view wx:else class="row">
+          <text class="bold name">{{user.nickName}}</text>
+          <text class="tag gray" wx:if="{{user.guest}}">临时球员</text>
+          <text class="muted edit" wx:if="{{self}}" bindtap="editName">✎ 改昵称</text>
+        </view>
+        <view class="muted" wx:if="{{self}}">点头像可更换</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 起始水平 -->
+  <view class="card level" wx:if="{{canLevel}}">
+    <view class="bold">设置起始水平</view>
+    <view class="muted">新球员默认 3.500。选一个接近你的水平，评分会更快收敛；打过比赛后就由比赛结果决定。</view>
+    <picker range="{{levelNames}}" value="{{levelIdx}}" bindchange="onLevel">
+      <button class="btn mini">选择水平（当前 {{blocks.doubles.ratingText}}）</button>
+    </picker>
+  </view>
+
+  <view class="tabs">
+    <view class="tab {{tab == 'doubles' ? 'on' : ''}}" data-tab="doubles" bindtap="switchTab">双打</view>
+    <view class="tab {{tab == 'singles' ? 'on' : ''}}" data-tab="singles" bindtap="switchTab">单打</view>
+  </view>
+
+  <view class="card">
+    <view class="row between">
+      <view>
+        <view class="muted">{{tab == 'doubles' ? '双打' : '单打'}}评分（模拟 DUPR）</view>
+        <view class="row">
+          <text class="rating-big">{{blocks[tab].ratingText}}</text>
+          <text class="tag clay" wx:if="{{blocks[tab].provisional}}">暂定</text>
+        </view>
+      </view>
+      <text class="link small" bindtap="goRules">怎么算的？</text>
+    </view>
+    <view class="stats row">
+      <view class="grow center"><view class="bold">{{blocks[tab].games}}</view><view class="muted">场次</view></view>
+      <view class="grow center"><view class="bold">{{blocks[tab].wins}}-{{blocks[tab].losses}}</view><view class="muted">胜-负</view></view>
+      <view class="grow center"><view class="bold">{{blocks[tab].winRate}}%</view><view class="muted">胜率</view></view>
+      <view class="grow center"><view class="bold">{{blocks[tab].reliability}}%</view><view class="muted">可靠度</view></view>
+    </view>
+    <view class="bar"><view class="fill" style="width: {{blocks[tab].reliability}}%"></view></view>
+
+    <view class="chart-wrap" wx:if="{{historyCount >= 2}}">
+      <canvas type="2d" id="chart" class="chart"></canvas>
+    </view>
+    <view class="empty" wx:else>打满 2 场后显示评分走势</view>
+  </view>
+
+  <view class="section-title">最近比赛</view>
+  <view class="card">
+    <view class="list-item" wx:for="{{matches}}" wx:key="_id">
+      <view class="wl {{item.won ? 'w' : 'l'}}">{{item.won ? '胜' : '负'}}</view>
+      <view class="grow">
+        <view class="ellipsis">
+          <text wx:if="{{item.partner}}">与 {{item.partner}} </text>
+          <text class="muted">vs</text> {{item.opp}}
+        </view>
+        <view class="muted">{{item.day}} · {{item.type == 'singles' ? '单打' : '双打'}}</view>
+      </view>
+      <view class="center">
+        <view class="bold">{{item.score}}</view>
+        <view class="small {{item.delta > 0 ? 'up' : item.delta < 0 ? 'down' : 'muted'}}">{{item.deltaText}}</view>
+      </view>
+    </view>
+    <view class="empty" wx:if="{{!matches.length}}">还没有比赛记录</view>
+  </view>
+</view>

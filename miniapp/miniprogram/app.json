@@ -1,0 +1,32 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/profile/profile",
+    "pages/player/player",
+    "pages/club/detail/detail",
+    "pages/club/edit/edit",
+    "pages/event/detail/detail",
+    "pages/event/edit/edit",
+    "pages/rules/rules"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#216b43",
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "匹克球助手",
+    "backgroundColor": "#f6f5f1",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#71776f",
+    "selectedColor": "#216b43",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "首页" },
+      { "pagePath": "pages/profile/profile", "text": "我的" }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

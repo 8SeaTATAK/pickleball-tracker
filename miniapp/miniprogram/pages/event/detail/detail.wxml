@@ -1,0 +1,230 @@
+<view class="page" wx:if="{{event}}">
+  <!-- 活动信息 -->
+  <view class="card">
+    <view class="row between">
+      <text class="bold title">{{event.title}}</text>
+      <text class="tag {{event.status == 'playing' ? 'clay' : event.status == 'finished' ? 'gray' : ''}}">{{statusText}}</text>
+    </view>
+    <view class="info">🕘 {{when}}</view>
+    <view class="info" wx:if="{{event.location}}">📍 {{event.location}}</view>
+    <view class="info">🏓 {{event.courts}} 片场 · 已报名 {{joined.length}}/{{event.capacity}}{{waitlist.length ? ' · 候补 ' + waitlist.length : ''}}{{event.fee ? ' · ¥' + event.fee + '/人' : ''}}</view>
+    <view class="info link" bindtap="goClub">🏠 {{club.name}} ›</view>
+    <view class="note" wx:if="{{event.note}}">{{event.note}}</view>
+
+    <view class="btn-row">
+      <block wx:if="{{event.status != 'finished'}}">
+        <button class="btn" wx:if="{{!mySignup}}" bindtap="signup">{{myRole ? '报名' : '加入俱乐部并报名'}}</button>
+        <button class="btn warn" wx:elif="{{mySignup == 'joined'}}" bindtap="cancel">取消报名</button>
+        <button class="btn warn" wx:else bindtap="cancel">候补中 · 取消</button>
+      </block>
+      <button class="btn ghost" open-type="share">分享</button>
+      <button class="btn ghost" wx:if="{{isAdmin}}" bindtap="manage">管理</button>
+    </view>
+  </view>
+
+  <view class="tabs">
+    <view class="tab {{tab == 'players' ? 'on' : ''}}" data-tab="players" bindtap="switchTab">报名 {{joined.length}}</view>
+    <view class="tab {{tab == 'matches' ? 'on' : ''}}" data-tab="matches" bindtap="switchTab">对阵 {{doneCount}}/{{totalCount}}</view>
+    <view class="tab {{tab == 'standings' ? 'on' : ''}}" data-tab="standings" bindtap="switchTab">本场排名</view>
+  </view>
+
+  <!-- 报名名单 -->
+  <block wx:if="{{tab == 'players'}}">
+    <view class="card">
+      <view class="grid" wx:if="{{joined.length}}">
+        <view class="cell" wx:for="{{joined}}" wx:key="_id" data-id="{{item._id}}" data-name="{{item.nickName}}" bindtap="tapPlayer">
+          <view class="avatar">
+            <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill" />
+            <text wx:else>{{item.nickName[0]}}</text>
+          </view>
+          <view class="ellipsis cname">{{index + 1}}. {{item.nickName}}</view>
+          <view class="muted">{{item.ratingText}}</view>
+        </view>
+      </view>
+      <view class="empty" wx:else>还没有人报名</view>
+    </view>
+    <block wx:if="{{waitlist.length}}">
+      <view class="section-title">候补</view>
+      <view class="card">
+        <view class="list-item" wx:for="{{waitlist}}" wx:key="_id" data-id="{{item._id}}" data-name="{{item.nickName}}" bindtap="tapPlayer">
+          <text class="muted">候补 {{index + 1}}</text>
+          <text class="grow">{{item.nickName}}</text>
+        </view>
+      </view>
+    </block>
+  </block>
+
+  <!-- 对阵 -->
+  <block wx:if="{{tab == 'matches'}}">
+    <view class="btn-row admin-row" wx:if="{{isAdmin}}">
+      <button class="btn" bindtap="openGen">{{rounds.length ? '重新生成对阵' : '生成对阵'}}</button>
+      <button class="btn ghost" bindtap="openAdd">手动加一局</button>
+    </view>
+    <view class="empty card" wx:if="{{!rounds.length}}">{{isAdmin ? '报名结束后，点「生成对阵」自动排轮转' : '管理员还没有生成对阵'}}</view>
+
+    <view wx:for="{{rounds}}" wx:for-item="rd" wx:for-index="ri" wx:key="round">
+      <view class="section-title">
+        <text>第 {{rd.round}} 轮</text>
+        <text class="muted" wx:if="{{rd.done}}">已完赛</text>
+      </view>
+      <view class="card match {{m.mine ? 'mine' : ''}}" wx:for="{{rd.matches}}" wx:for-item="m" wx:for-index="mi" wx:key="_id" data-r="{{ri}}" data-m="{{mi}}" bindtap="openScore">
+        <view class="court muted">{{m.court}} 号场{{m.type == 'singles' ? ' · 单打' : ''}}</view>
+        <view class="row">
+          <view class="team grow {{m.status == 'done' && m.scoreA > m.scoreB ? 'win' : ''}}">
+            <view class="pname" wx:for="{{m.teamA}}" wx:for-item="p" wx:key="_id">
+              <text class="ellipsis">{{p.nickName}}</text>
+              <text class="d {{p.delta > 0 ? 'up' : 'down'}}" wx:if="{{p.deltaText}}">{{p.deltaText}}</text>
+            </view>
+          </view>
+          <view class="score">
+            <block wx:if="{{m.status == 'done'}}">
+              <text class="{{m.scoreA > m.scoreB ? 'bold' : 'muted'}}">{{m.scoreA}}</text>
+              <text class="muted"> : </text>
+              <text class="{{m.scoreB > m.scoreA ? 'bold' : 'muted'}}">{{m.scoreB}}</text>
+            </block>
+            <block wx:else>
+              <view class="muted vs">VS</view>
+              <view class="muted pred">预测 {{m.prediction}}</view>
+              <view class="tag" wx:if="{{m.canScore}}">录入比分</view>
+            </block>
+          </view>
+          <view class="team grow right {{m.status == 'done' && m.scoreB > m.scoreA ? 'win' : ''}}">
+            <view class="pname" wx:for="{{m.teamB}}" wx:for-item="p" wx:key="_id">
+              <text class="d {{p.delta > 0 ? 'up' : 'down'}}" wx:if="{{p.deltaText}}">{{p.deltaText}}</text>
+              <text class="ellipsis">{{p.nickName}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 本场排名 -->
+  <block wx:if="{{tab == 'standings'}}">
+    <view class="card">
+      <view class="table" wx:if="{{standings.length}}">
+        <view class="tr th">
+          <text class="rank">#</text>
+          <text class="name">球员</text>
+          <text class="c">胜-负</text>
+          <text class="c">得失分</text>
+          <text class="c">净胜</text>
+          <text class="c">积分</text>
+        </view>
+        <view class="tr" wx:for="{{standings}}" wx:key="userId" data-id="{{item.userId}}" bindtap="goPlayer">
+          <text class="rank {{item.rank <= 3 ? 'top' : ''}}">{{item.rank}}</text>
+          <view class="name"><text class="ellipsis">{{item.user.nickName}}</text></view>
+          <text class="c">{{item.wins}}-{{item.losses}}</text>
+          <text class="c small">{{item.pointsFor}}/{{item.pointsAgainst}}</text>
+          <text class="c {{item.diff > 0 ? 'up' : item.diff < 0 ? 'down' : ''}}">{{item.diff > 0 ? '+' : ''}}{{item.diff}}</text>
+          <text class="c bold">{{item.score}}</text>
+        </view>
+      </view>
+      <view class="empty" wx:else>还没有完赛的对局</view>
+    </view>
+  </block>
+</view>
+
+<!-- 生成对阵弹层 -->
+<view class="mask" wx:if="{{showGen}}" bindtap="closeGen">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-title">生成对阵（{{joined.length}} 人）</view>
+    <view class="mode {{modeIdx == index ? 'on' : ''}}" wx:for="{{modes}}" wx:key="key" data-i="{{index}}" bindtap="pickMode">
+      <view class="bold">{{item.name}}</view>
+      <view class="muted">{{item.desc}}</view>
+    </view>
+    <view class="field">
+      <text class="label">场地数</text>
+      <input type="number" value="{{genCourts}}" data-k="genCourts" bindinput="onGenInput" />
+    </view>
+    <view class="field" wx:if="{{modes[modeIdx].key == 'rotation' || modes[modeIdx].key == 'balanced' || modes[modeIdx].key == 'singles'}}">
+      <text class="label">轮数</text>
+      <input type="number" value="{{genRounds}}" data-k="genRounds" bindinput="onGenInput" />
+    </view>
+    <view class="muted" wx:else>循环赛的轮数由队伍数决定</view>
+    <view class="btn-row">
+      <button class="btn ghost" bindtap="closeGen">取消</button>
+      <button class="btn" bindtap="generate">生成</button>
+    </view>
+  </view>
+</view>
+
+<!-- 手动加局弹层 -->
+<view class="mask" wx:if="{{showAdd}}" bindtap="closeAdd">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-title">手动加一局</view>
+    <view class="tabs">
+      <view class="tab {{addType == 'doubles' ? 'on' : ''}}" data-t="doubles" bindtap="setAddType">双打</view>
+      <view class="tab {{addType == 'singles' ? 'on' : ''}}" data-t="singles" bindtap="setAddType">单打</view>
+    </view>
+    <block wx:if="{{addType == 'doubles'}}">
+      <view class="field"><text class="label">A 队</text>
+        <picker range="{{names}}" value="{{pick[0]}}" data-i="0" bindchange="onPick"><view class="pk">{{names[pick[0]]}} ›</view></picker>
+        <picker range="{{names}}" value="{{pick[1]}}" data-i="1" bindchange="onPick"><view class="pk">{{names[pick[1]]}} ›</view></picker>
+      </view>
+      <view class="field"><text class="label">B 队</text>
+        <picker range="{{names}}" value="{{pick[2]}}" data-i="2" bindchange="onPick"><view class="pk">{{names[pick[2]]}} ›</view></picker>
+        <picker range="{{names}}" value="{{pick[3]}}" data-i="3" bindchange="onPick"><view class="pk">{{names[pick[3]]}} ›</view></picker>
+      </view>
+    </block>
+    <block wx:else>
+      <view class="field"><text class="label">A</text>
+        <picker range="{{names}}" value="{{pick[0]}}" data-i="0" bindchange="onPick"><view class="pk">{{names[pick[0]]}} ›</view></picker>
+      </view>
+      <view class="field"><text class="label">B</text>
+        <picker range="{{names}}" value="{{pick[1]}}" data-i="1" bindchange="onPick"><view class="pk">{{names[pick[1]]}} ›</view></picker>
+      </view>
+    </block>
+    <view class="btn-row">
+      <button class="btn ghost" bindtap="closeAdd">取消</button>
+      <button class="btn" bindtap="addMatch">添加</button>
+    </view>
+  </view>
+</view>
+
+<!-- 代报名弹层 -->
+<view class="mask" wx:if="{{showProxy}}" bindtap="closeProxy">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-title">代成员报名</view>
+    <view class="field"><text class="label">成员</text>
+      <picker range="{{candidateNames}}" value="{{proxyIdx}}" bindchange="onProxyPick"><view>{{candidateNames[proxyIdx]}} ›</view></picker>
+    </view>
+    <view class="btn-row">
+      <button class="btn ghost" bindtap="closeProxy">完成</button>
+      <button class="btn" bindtap="confirmProxy">报名</button>
+    </view>
+  </view>
+</view>
+
+<!-- 录分弹层 -->
+<view class="mask" wx:if="{{showScore}}" bindtap="closeScore">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-title">第 {{scoring.round}} 轮 · {{scoring.court}} 号场</view>
+    <view class="score-edit">
+      <view class="side">
+        <view class="names"><view wx:for="{{scoring.teamA}}" wx:key="_id" class="ellipsis">{{item.nickName}}</view></view>
+        <view class="stepper">
+          <view class="st" data-k="scoreA" data-d="-1" bindtap="step">−</view>
+          <input type="number" value="{{scoreA}}" data-k="scoreA" bindinput="onScore" maxlength="2" />
+          <view class="st" data-k="scoreA" data-d="1" bindtap="step">＋</view>
+        </view>
+        <view class="quick" data-k="scoreA" bindtap="quick">11</view>
+      </view>
+      <view class="colon">:</view>
+      <view class="side">
+        <view class="names"><view wx:for="{{scoring.teamB}}" wx:key="_id" class="ellipsis">{{item.nickName}}</view></view>
+        <view class="stepper">
+          <view class="st" data-k="scoreB" data-d="-1" bindtap="step">−</view>
+          <input type="number" value="{{scoreB}}" data-k="scoreB" bindinput="onScore" maxlength="2" />
+          <view class="st" data-k="scoreB" data-d="1" bindtap="step">＋</view>
+        </view>
+        <view class="quick" data-k="scoreB" bindtap="quick">11</view>
+      </view>
+    </view>
+    <view class="muted center">评分预测比分 {{scoring.prediction}}。打得比预测好就涨分，赢了但没打出预期也可能掉分。</view>
+    <view class="btn-row">
+      <button class="btn warn" wx:if="{{isAdmin}}" bindtap="deleteMatch">删除</button>
+      <button class="btn" bindtap="submitScore">{{scoring.status == 'done' ? '修改比分' : '提交'}}</button>
+    </view>
+  </view>
+</view>

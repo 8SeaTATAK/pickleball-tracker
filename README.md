@@ -61,3 +61,8 @@ The token lives only in that browser's `localStorage`; it is never committed and
 never leaves the device except as an `Authorization` header to api.github.com.
 Open `#forget` to wipe it from a device, or revoke it on GitHub if a phone is
 lost.
+
+## 匹克球助手小程序
+
+`miniapp/` 是另一个独立项目：俱乐部运营、比赛计分、积分榜、模拟 DUPR 评分的微信小程序（云开发）。
+说明和部署步骤见 [miniapp/README.md](miniapp/README.md)。

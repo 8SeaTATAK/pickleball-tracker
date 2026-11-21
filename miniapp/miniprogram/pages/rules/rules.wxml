@@ -1,0 +1,37 @@
+<view class="page">
+  <view class="card">
+    <view class="h">模拟 DUPR 评分</view>
+    <view class="p">评分范围 <text class="bold">2.000 – 8.000</text>，双打、单打分开计算。新球员默认 3.500，也可以在「我的」里选一个起始水平（只能在打第一场前设置）。</view>
+    <view class="p">和 DUPR 一样，评分<text class="bold">看比分，不只看输赢</text>：</view>
+    <view class="formula">期望得分率 E = 1 ÷ (1 + 10^(−评分差 ÷ 2.8))</view>
+    <view class="formula">实际得分率 A = 本方得分 ÷ 总分</view>
+    <view class="formula">评分变化 = K × 局长系数 × (A − E)</view>
+    <view class="p">双打用两人平均分作为队伍评分，两位搭档按各自的 K 值变化。</view>
+  </view>
+
+  <view class="card">
+    <view class="h">评分差与预测比分</view>
+    <view class="table">
+      <view class="tr th"><text class="name">评分差</text><text class="c w">期望得分率</text><text class="c w">预测比分</text></view>
+      <view class="tr" wx:for="{{rows}}" wx:key="diff"><text class="name">{{item.diff}}</text><text class="c w">{{item.share}}</text><text class="c w">{{item.score}}</text></view>
+    </view>
+    <view class="p muted">打得比预测好就涨分，否则掉分。所以强队 11:9 险胜弱队也可能掉分，弱队 9:11 惜败也可能涨分。</view>
+  </view>
+
+  <view class="card">
+    <view class="h">可靠度与 K 值</view>
+    <view class="p">可靠度 = 已打场次 ÷ 20（封顶 100%）。K 值从 0.50（新球员）线性降到 0.12（可靠度 100%）：新球员几场就能找到自己的位置，老球员评分更稳定。打满 6 场前评分标注「暂定」。</view>
+    <view class="p">局长系数 = 总得分 ÷ 18，限制在 0.5–1.25：15 分、21 分的长局权重更高，短局更低。</view>
+  </view>
+
+  <view class="card">
+    <view class="h">俱乐部积分榜</view>
+    <view class="p">积分 = 胜场 × 胜场分 + 负场 × 负场分（默认 3 分 / 1 分，管理员可在俱乐部设置里改）。同积分依次比较胜率、净胜分、场次。可按近 7 天、近 30 天、全部查看。</view>
+  </view>
+
+  <view class="card">
+    <view class="h">修改与删除比分</view>
+    <view class="p">本场球员或管理员可以录入比分；录入后只有管理员能修改或删除。修改、删除时会先撤销这一局的评分变化再重新计算。</view>
+    <view class="p muted">说明：本评分是参考 DUPR 公开原则的模拟实现，与 DUPR 官方评分无关联，结果仅供俱乐部内部参考。</view>
+  </view>
+</view>

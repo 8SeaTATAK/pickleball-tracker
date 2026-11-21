@@ -1,0 +1,2 @@
+.dash { margin: 0 24rpx; }
+.field picker { flex: none; }

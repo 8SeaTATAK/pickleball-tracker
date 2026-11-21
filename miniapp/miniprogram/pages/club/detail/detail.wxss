@@ -1,0 +1,10 @@
+.avatar.big { width: 96rpx; height: 96rpx; font-size: 40rpx; }
+.title { font-size: 34rpx; }
+.intro { margin-top: 20rpx; color: var(--ink); white-space: pre-wrap; font-size: 26rpx; }
+.invite { margin-top: 20rpx; padding-top: 20rpx; border-top: 1rpx solid var(--line); }
+.code { color: var(--turf); font-weight: 700; letter-spacing: 4rpx; }
+.join { margin-top: 24rpx; }
+.list { margin-top: 24rpx; }
+.small-tabs .tab { padding: 8rpx 0; font-size: 24rpx; }
+.rule { margin-top: 16rpx; }
+.rating { color: var(--turf); }

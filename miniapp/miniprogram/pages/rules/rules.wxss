@@ -1,0 +1,3 @@
+.h { font-size: 32rpx; font-weight: 600; margin-bottom: 12rpx; color: var(--turf); }
+.p { font-size: 26rpx; margin-top: 12rpx; }
+.formula { font-family: Menlo, monospace; font-size: 24rpx; background: var(--paper); padding: 12rpx 16rpx; border-radius: 10rpx; margin-top: 12rpx; }
