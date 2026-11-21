@@ -38,7 +38,7 @@
   <!-- 功能宫格 -->
   <view class="card grid">
     <view class="cell" bindtap="go" data-url="/pages/mine/events/events"><image class="ic ball" src="/images/pickleball.png" /><text>{{t.menu_events}}</text></view>
-    <view class="cell" bindtap="go" data-url="/pages/mine/matches/matches"><view class="ic c2">🏓</view><text>{{t.menu_matches}}</text></view>
+    <view class="cell" bindtap="go" data-url="/pages/mine/matches/matches"><image class="ic ball" src="/images/paddle.png" /><text>{{t.menu_matches}}</text></view>
     <view class="cell" bindtap="goRating"><view class="ic c3">📈</view><text>{{t.menu_rating}}</text></view>
     <view class="cell" bindtap="go" data-url="/pages/guide/guide?topic=levels"><view class="ic c4">🏅</view><text>{{t.menu_levels}}</text></view>
     <view class="cell" bindtap="go" data-url="/pages/guide/guide?topic=formats"><view class="ic c5">🔄</view><text>{{t.menu_formats}}</text></view>

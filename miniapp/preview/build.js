@@ -40,6 +40,9 @@ function __req(name) {
 }
 `;
 
+const svg = (f) => JSON.stringify(read(f).replace(/<!--[\s\S]*?-->/g, '').replace(/\s*\n\s*/g, ''));
+const htmlIcons = `const BALL_SVG = ${svg('preview/pickleball.svg')};\nconst PADDLE_SVG = ${svg('preview/paddle.svg')};`;
+
 const html = `<title>匹克球助手预览</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -54,7 +57,8 @@ ${runtime}
 ${bundle}
 // 预览代码放进独立作用域，避免和 window.top 等浏览器全局变量冲突
 (function () {
-const BALL_SVG = ${JSON.stringify(read('preview/pickleball.svg').replace(/<!--[\s\S]*?-->/g, '').replace(/\s*\n\s*/g, ''))};
+${htmlIcons}
+
 ${read('preview/app.js')}
 })();
 </script>

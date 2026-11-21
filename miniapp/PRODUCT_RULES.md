@@ -42,6 +42,15 @@
 - 存在用户文档 `pbLevel: { type: 'self' | 'dupr', value }`，「我的」页显示。
 - 文案已在 `i18n.js`（`pbLevel`、`pbSelf`、`pbDupr`、`notFilled`、`duprPh`、`duprHint`、`pbSeedHint`、`err_duprRange`）。
 
+### 5. 我的活动 / 我的比赛列表（小程序）
+
+网页预览（`preview/app.js` 的 `eventCard`、`viewMyEvents`、`viewMyMatches`）已经做好，小程序还没做。
+- 我的活动：标签「全部 / 发起 / 参与」。发起 = 我创建的活动，参与 = 我报了名（未取消）的活动。
+- 我的比赛：只列已经排了对阵的活动，标签「全部 / 发起 / 参与 / 裁判」。参与 = 我上过场，裁判 = 我录过比分但没上场。
+- 活动卡片：标题、日期（2026.11.04（周三）09:00–11:00）、赛制（双打轮转，一局定胜负，11分制）、组织者 + 报名人数 + 浏览数、参加者头像，右上角斜贴状态标签（报名中 / 进行中 / 已结束）。
+- 后端需要：活动记录 `creatorId`（已有）、生成对阵时记录 `mode`、目标分 `target`（规则 v1 的赛制落地后改为赛制字段）、浏览数 `views`（打开活动详情时 +1）。
+- 文案已在 `i18n.js`（`tabAll`、`tabCreated`、`tabJoined`、`tabUmpire`、`bestOf1`、`toPoints`、`organizedBy`、`signedN`、`viewsN`、`noMyMatchEvents`）。
+
 ## 已实现
 
 ### 1. 头像、昵称修改频率

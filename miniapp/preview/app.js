@@ -10,7 +10,7 @@ const { predict } = __req('predict');
 const PR = __req('profileRules');
 
 const ME = 'me';
-const STORE = 'pp_state_v4';
+const STORE = 'pp_state_v5';
 const DAY = 86400000;
 
 // 预览专用文案
@@ -72,7 +72,7 @@ function seed() {
   // 过去 8 个周六：每次 6 轮 × 2 片场，比分按真实水平逐分模拟
   for (let k = 8; k >= 1; k--) {
     const start = nextSat - 7 * k * DAY;
-    const ev = newEvent(st, start, 'finished');
+    const ev = newEvent(st, start, 'finished', k % 3 === 0 ? 'wei' : ME);
     const players = Object.keys(st.users).filter(() => rand() > 0.12);
     players.forEach((p, i) => st.signups.push({ eventId: ev._id, userId: p, status: 'joined', createdAt: start - DAY + i }));
     ev.joinedCount = players.length;
@@ -97,8 +97,12 @@ function seed() {
   return st;
 }
 
-function newEvent(st, start, status) {
+function newEvent(st, start, status, creatorId) {
   const ev = {
+    creatorId: creatorId || ME,
+    views: 40 + ((start / 60000) % 260),
+    mode: status === 'open' ? '' : 'rotation',
+    target: 11,
     _id: 'e' + st.seq++,
     clubId: 'c1',
     title: 'Saturday Doubles 周六双打',
@@ -520,7 +524,7 @@ function viewMe(t) {
   </div>
   <div class="card mgrid">
     ${cell('myEvents', BALL_SVG, 'ball', t.menu_events)}
-    ${cell('myMatches', '🏓', 'o', t.menu_matches)}
+    ${cell('myMatches', PADDLE_SVG, 'ball', t.menu_matches)}
     ${cell('player', '📈', 'b', t.menu_rating, `data-id="${ME}"`)}
     ${cell('guide', '🏅', 'g', t.menu_levels, 'data-topic="levels"')}
     ${cell('guide', '🔄', 'o', t.menu_formats, 'data-topic="formats"')}
@@ -576,33 +580,55 @@ function eventItem(t, e) {
     <div class="muted num">${joinedOf(e._id).length}/${e.capacity}</div></div>`;
 }
 
-function viewMyEvents(t) {
-  const ids = new Set(st.signups.filter((s) => s.userId === ME && s.status !== 'cancelled').map((s) => s.eventId));
-  const evs = st.events.filter((e) => ids.has(e._id)).sort((a, b) => b.startTime - a.startTime);
-  return `<div class="card flush">${evs.length ? evs.map((e) => eventItem(t, e)).join('') : `<div class="empty">${t.noMyEvents}</div>`}</div>`;
+// 活动卡片（我的活动 / 我的比赛）：标题、时间、赛制、组织者、报名、浏览、参加者头像、状态角标
+function eventCard(t, e) {
+  const d = new Date(e.startTime);
+  const pad = (n) => String(n).padStart(2, '0');
+  const day = `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}（${i18n.weekday(d.getDay())}）${fmt.time(e.startTime)}–${fmt.time(e.endTime)}`;
+  const joined = joinedOf(e._id).map((x) => st.users[x.userId]);
+  const comma = i18n.getLang() === 'zh' ? '，' : ', ';
+  const format = e.mode ? [t['mode_' + e.mode], t.bestOf1, f(t.toPoints, e.target || 11)].join(comma) : '';
+  const creator = st.users[e.creatorId] || st.users[ME];
+  return `<div class="card ev-card" data-act="event" data-id="${e._id}" role="button" tabindex="0">
+    <span class="ribbon ${e.status}">${fmt.status(e.status)}</span>
+    <div class="bold ev-title ellipsis">${esc(e.title)}</div>
+    <div class="ev-line">🕘 <span class="num">${day}</span></div>
+    ${format ? `<div class="ev-line">🏓 ${esc(format)}</div>` : ''}
+    <div class="ev-line">${avatar(creator, 'xs')} ${esc(f(t.organizedBy, creator.nickName))}${comma}${f(t.signedN, joined.length, e.capacity)}${comma}${f(t.viewsN, Math.round(e.views || 0))}</div>
+    ${joined.length ? `<div class="faces-row">${joined.slice(0, 12).map((u) => avatar(u, 'xs')).join('')}</div>` : ''}
+  </div>`;
 }
 
+function tabsBar(tabs, cur) {
+  return `<div class="tabs line">${tabs.map(([k, label]) => `<button class="${cur === k ? 'on' : ''}" data-act="listTab" data-k="${k}">${label}</button>`).join('')}</div>`;
+}
+
+const signedUp = (eid) => st.signups.some((s) => s.eventId === eid && s.userId === ME && s.status !== 'cancelled');
+const umpired = (eid) => st.matches.some((m) => m.eventId === eid && m.status === 'done' && m.recordedBy === ME && !m.players.includes(ME));
+
+function viewMyEvents(t) {
+  const tab = ui.listTab || 'all';
+  const mine = st.events.filter((e) => e.creatorId === ME || signedUp(e._id));
+  const list = mine
+    .filter((e) => (tab === 'created' ? e.creatorId === ME : tab === 'joined' ? signedUp(e._id) : true))
+    .sort((a, b) => b.startTime - a.startTime);
+  return `${tabsBar([['all', t.tabAll], ['created', t.tabCreated], ['joined', t.tabJoined]], tab)}
+  ${list.length ? list.map((e) => eventCard(t, e)).join('') : `<div class="card empty">${t.noMyEvents}</div>`}`;
+}
+
+// 我的比赛：已经排了对阵的活动
 function viewMyMatches(t) {
-  const mine = st.matches.filter((m) => m.players.includes(ME));
-  const pending = mine.filter((m) => m.status !== 'done' && eventOf(m.eventId).status !== 'finished').sort((a, b) => a.round - b.round || a.court - b.court);
-  const done = mine.filter((m) => m.status === 'done').sort((a, b) => b.playedAt - a.playedAt);
-  const row = (m) => {
-    const e = eventOf(m.eventId);
-    const a = m.teamA.includes(ME);
-    const sep = i18n.getLang() === 'zh' ? '、' : ', ';
-    const names = (team) => team.map((p) => esc(st.users[p].nickName)).join(sep);
-    const ok = m.status === 'done';
-    const won = ok && (a ? m.scoreA > m.scoreB : m.scoreB > m.scoreA);
-    const d = ((m.ratingChanges || []).find((c) => c.id === ME) || {}).delta || 0;
-    return `<div class="item" data-act="event" data-id="${e._id}" role="button" tabindex="0">
-      ${ok ? `<div class="wl ${won ? 'w' : 'l'}">${won ? t.winShort : t.lossShort}</div>` : `<div class="wl p">${m.round}</div>`}
-      <div class="grow"><div class="ellipsis">${names(a ? m.teamA : m.teamB)} <span class="muted">vs</span> ${names(a ? m.teamB : m.teamA)}</div>
-      <div class="muted ellipsis">${fmt.shortDate(e.startTime)} · ${f(t.roundN, m.round)} · ${f(t.courtN, m.court)}</div></div>
-      <div class="center">${ok ? `<div class="bold num">${a ? m.scoreA + ':' + m.scoreB : m.scoreB + ':' + m.scoreA}</div><div class="d ${d > 0 ? 'up' : d < 0 ? 'down' : 'muted'}">${fmt.delta(d)}</div>` : `<span class="tag">${t.enterScore}</span>`}</div></div>`;
-  };
-  return `${pending.length ? `<div class="section-title">${t.upNext}</div><div class="card flush">${pending.map(row).join('')}</div>` : ''}
-  <div class="section-title">${t.finishedGames}</div>
-  <div class="card flush">${done.length ? done.map(row).join('') : `<div class="empty">${t.noGames}</div>`}</div>`;
+  const tab = ui.listTab || 'all';
+  const hasGames = (e) => st.matches.some((m) => m.eventId === e._id);
+  const played = (e) => st.matches.some((m) => m.eventId === e._id && m.players.includes(ME));
+  const list = st.events
+    .filter(hasGames)
+    .filter((e) =>
+      tab === 'created' ? e.creatorId === ME : tab === 'joined' ? played(e) : tab === 'umpire' ? umpired(e._id) : e.creatorId === ME || played(e) || umpired(e._id)
+    )
+    .sort((a, b) => b.startTime - a.startTime);
+  return `${tabsBar([['all', t.tabAll], ['created', t.tabCreated], ['joined', t.tabJoined], ['umpire', t.tabUmpire]], tab)}
+  ${list.length ? list.map((e) => eventCard(t, e)).join('') : `<div class="card empty">${t.noMyMatchEvents}</div>`}`;
 }
 
 function viewGuide(t, topic) {
@@ -854,6 +880,9 @@ const actions = {
   },
   event(d) {
     ui.eventTab = null;
+    const ev = eventOf(d.id);
+    ev.views = (ev.views || 0) + 1;
+    save();
     go({ view: 'event', id: d.id });
   },
   player(d) {
@@ -885,10 +914,16 @@ const actions = {
     rerender();
   },
   myEvents() {
+    ui.listTab = 'all';
     go({ view: 'myEvents' });
   },
   myMatches() {
+    ui.listTab = 'all';
     go({ view: 'myMatches' });
+  },
+  listTab(d) {
+    ui.listTab = d.k;
+    rerender();
   },
   guide(d) {
     go({ view: 'guide', topic: d.topic });
@@ -1051,6 +1086,7 @@ const actions = {
     const start = kept.reduce((mx, m) => Math.max(mx, m.round), 0);
     let n = 0;
     plan.rounds.forEach((r) => r.games.forEach((g) => (addMatchDoc(st, e, start + r.round, g.court, g.teamA, g.teamB), n++)));
+    e.mode = s.mode;
     if (e.status === 'open') e.status = 'playing';
     ui.sheet = null;
     ui.eventTab = 'matches';

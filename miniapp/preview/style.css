@@ -269,3 +269,18 @@ select.ev-input { text-align-last: right; cursor: pointer; }
 /* 我的活动：俱乐部风格的匹克球图标 */
 .ic.ball { background: none; }
 .ic.ball svg { width: 40px; height: 40px; display: block; }
+
+/* 我的活动 / 我的比赛：下划线标签 + 活动卡片 */
+.tabs.line { background: var(--card); border-radius: 0; margin: -12px -12px 0; padding: 0 4px; }
+.tabs.line button { border-radius: 0; padding: 10px 0; background: none; color: var(--ink); }
+.tabs.line button.on { background: none; color: var(--clay); font-weight: 700; box-shadow: inset 0 -2px 0 var(--clay); }
+.ev-card { position: relative; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; gap: 6px; }
+.ev-title { font-size: 16px; padding-right: 56px; }
+.ev-line { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink); flex-wrap: wrap; }
+.avatar.xs { width: 20px; height: 20px; font-size: 10px; }
+.faces-row { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+.faces-row .avatar.xs { width: 26px; height: 26px; font-size: 11px; }
+.ribbon { position: absolute; top: 10px; right: -26px; transform: rotate(45deg); width: 96px; text-align: center; font-size: 11px; padding: 2px 0; color: #fff; background: var(--accent); }
+.ribbon.finished { background: var(--muted); }
+.ribbon.playing { background: var(--clay); }
+.ribbon.open { background: var(--btn); }
