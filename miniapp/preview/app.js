@@ -1,0 +1,797 @@
+// 匹克球助手 · 网页交互预览
+// 评分 / 对阵 / 积分榜 / 多语言 / 格式化 都直接用小程序的真实代码（构建时打包进来），
+// 这里只负责模拟页面和本地数据。数据存在浏览器 localStorage，不连云端。
+const R = __req('rating');
+const S = __req('schedule');
+const { aggregate } = __req('stats');
+const i18n = __req('i18n');
+const fmt = __req('fmt');
+const { predict } = __req('predict');
+
+const ME = 'me';
+const STORE = 'pp_state_v1';
+const DAY = 86400000;
+
+// 预览专用文案
+const PX = {
+  banner: ['预览版 · 演示数据只存在这个浏览器里', 'Preview · demo data stays in this browser', 'Bản xem trước · dữ liệu mẫu chỉ lưu trong trình duyệt này', 'Pratonton · data demo disimpan dalam pelayar ini'],
+  reset: ['重置', 'Reset', 'Đặt lại', 'Set semula'],
+  notInPreview: ['预览版暂不支持这个操作', 'Not available in the preview', 'Bản xem trước chưa hỗ trợ thao tác này', 'Tidak tersedia dalam pratonton'],
+  resetDone: ['已恢复演示数据', 'Demo data restored', 'Đã khôi phục dữ liệu mẫu', 'Data demo dipulihkan'],
+};
+const px = (k) => PX[k][i18n.LANGS.indexOf(i18n.getLang())];
+const f = (s, ...a) => i18n.format(s, a);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+// ---------------- 演示数据 ----------------
+// [id, 昵称, 真实水平(用于模拟比分), 自评起始水平, 临时球员]
+const PEOPLE = [
+  [ME, 'Victor', 3.6, 3.5],
+  ['wei', '张伟', 4.3, 4.0],
+  ['lin', '小林', 3.2, 3.0],
+  ['alice', 'Alice', 3.9, 4.0],
+  ['ben', 'Ben', 3.4, 3.5],
+  ['minh', 'Minh Trần', 4.0, 4.0],
+  ['linh', 'Linh Nguyễn', 3.3, 3.0],
+  ['aiman', 'Aiman', 3.8, 3.5],
+  ['nurul', 'Nurul', 3.0, 3.0],
+  ['emily', 'Emily', 3.5, 3.5],
+  ['chen', '陈老师', 4.6, 4.5, true],
+  ['sarah', 'Sarah', 2.8, 2.5, true],
+];
+const COLORS = ['#216b43', '#b95c30', '#3c6e9c', '#7b5aa6', '#a0722a', '#2f8a83', '#a64b6b', '#58753a'];
+
+function seed() {
+  const rand = S.mulberry32(20261121);
+  const truth = {};
+  const st = { users: {}, clubs: [], members: [], events: [], signups: [], matches: [], history: [], seq: 1 };
+  PEOPLE.forEach(([id, name, real, lv, guest], i) => {
+    truth[id] = real;
+    const blk = () => ({ rating: lv, games: 0, wins: 0, losses: 0 });
+    st.users[id] = { _id: id, nickName: name, guest: !!guest, color: COLORS[i % COLORS.length], doubles: blk(), singles: blk() };
+  });
+  st.clubs.push(
+    { _id: 'c1', name: 'North Ryde Pickleball', city: 'Sydney', inviteCode: 'NR7K2P', intro: '每周六上午 Tennis World North Ryde · Saturday mornings, all levels welcome', settings: { winPoints: 3, lossPoints: 1, currency: 'A$' } },
+    { _id: 'c2', name: 'Macquarie Park 夜场', city: 'Sydney', inviteCode: 'MQ4H8D', intro: '', settings: { winPoints: 3, lossPoints: 1, currency: 'A$' } }
+  );
+  PEOPLE.forEach(([id]) => st.members.push({ clubId: 'c1', userId: id, role: id === ME ? 'owner' : id === 'wei' ? 'admin' : 'member' }));
+  [ME, 'alice', 'ben', 'aiman', 'emily'].forEach((id) => st.members.push({ clubId: 'c2', userId: id, role: id === 'alice' ? 'owner' : 'member' }));
+
+  const now = Date.now();
+  const at9 = (ts) => {
+    const d = new Date(ts);
+    d.setHours(9, 0, 0, 0);
+    return d.getTime();
+  };
+  const daysToSat = (6 - new Date(now).getDay() + 7) % 7 || 7;
+  const nextSat = at9(now + daysToSat * DAY);
+
+  // 过去 4 个周六：每次 6 轮 × 2 片场，比分按真实水平逐分模拟
+  for (let k = 4; k >= 1; k--) {
+    const start = nextSat - 7 * k * DAY;
+    const ev = newEvent(st, start, 'finished');
+    const players = Object.keys(st.users).filter(() => rand() > 0.12);
+    players.forEach((p, i) => st.signups.push({ eventId: ev._id, userId: p, status: 'joined', createdAt: start - DAY + i }));
+    ev.joinedCount = players.length;
+    const plan = S.rotation(players, { courts: 2, rounds: 6, seed: 100 + k });
+    for (const r of plan.rounds) {
+      for (const g of r.games) {
+        const m = addMatchDoc(st, ev, r.round, g.court, g.teamA, g.teamB);
+        const pa = R.expectedShare(avg(g.teamA.map((p) => truth[p])), avg(g.teamB.map((p) => truth[p])));
+        let a = 0;
+        let b = 0;
+        while (!((a >= 11 || b >= 11) && Math.abs(a - b) >= 2)) rand() < pa ? a++ : b++;
+        applyScore(st, m, a, b, start + (r.round - 1) * 18 * 60000);
+      }
+    }
+  }
+  // 下周六：报名中，9 人已报，你还没报
+  const up = newEvent(st, nextSat, 'open');
+  Object.keys(st.users)
+    .filter((id) => id !== ME && !['nurul', 'sarah'].includes(id))
+    .forEach((id, i) => st.signups.push({ eventId: up._id, userId: id, status: 'joined', createdAt: now - DAY + i }));
+  up.joinedCount = 9;
+  return st;
+}
+
+function newEvent(st, start, status) {
+  const ev = {
+    _id: 'e' + st.seq++,
+    clubId: 'c1',
+    title: 'Saturday Doubles 周六双打',
+    location: 'Tennis World North Ryde · Ct5–6',
+    note: 'Bring water 自带水 · AA via PayID',
+    startTime: start,
+    endTime: start + 2 * 3600000,
+    courts: 2,
+    capacity: 12,
+    fee: 15,
+    status,
+    joinedCount: 0,
+  };
+  st.events.push(ev);
+  return ev;
+}
+
+function addMatchDoc(st, ev, round, court, teamA, teamB) {
+  const m = {
+    _id: 'm' + st.seq++,
+    eventId: ev._id,
+    clubId: ev.clubId,
+    round,
+    court,
+    type: teamA.length === 1 ? 'singles' : 'doubles',
+    teamA,
+    teamB,
+    players: [...teamA, ...teamB],
+    status: 'pending',
+  };
+  st.matches.push(m);
+  return m;
+}
+
+const avg = (xs) => xs.reduce((s, x) => s + x, 0) / xs.length;
+const clampR = (v) => Math.min(R.MAX_RATING, Math.max(R.MIN_RATING, v));
+
+// 与云函数 submitScore / deleteMatch 相同：已完赛的先回滚再重算
+function revert(st, m) {
+  const aWon = m.scoreA > m.scoreB;
+  for (const c of m.ratingChanges || []) {
+    const b = st.users[c.id][m.type];
+    const won = m.teamA.includes(c.id) ? aWon : !aWon;
+    b.rating = R.round3(clampR(b.rating - c.delta));
+    b.games = Math.max(0, b.games - 1);
+    if (won) b.wins = Math.max(0, b.wins - 1);
+    else b.losses = Math.max(0, b.losses - 1);
+  }
+  st.history = st.history.filter((h) => h.matchId !== m._id);
+}
+
+function applyScore(st, m, a, b, at) {
+  if (m.status === 'done') revert(st, m);
+  const side = (team) => team.map((id) => ({ id, rating: st.users[id][m.type].rating, games: st.users[id][m.type].games }));
+  const r = R.rateMatch({ teamA: side(m.teamA), teamB: side(m.teamB), scoreA: a, scoreB: b });
+  for (const c of r.changes) {
+    const blk = st.users[c.id][m.type];
+    const won = m.teamA.includes(c.id) ? a > b : b > a;
+    blk.rating = c.after;
+    blk.games++;
+    if (won) blk.wins++;
+    else blk.losses++;
+  }
+  const when = m.playedAt || at || Date.now();
+  Object.assign(m, { scoreA: a, scoreB: b, status: 'done', ratingChanges: r.changes, playedAt: when });
+  r.changes.forEach((c) => st.history.push({ userId: c.id, matchId: m._id, type: m.type, before: c.before, after: c.after, delta: c.delta, at: when }));
+  return r;
+}
+
+// ---------------- 状态 ----------------
+let st;
+try {
+  st = JSON.parse(localStorage.getItem(STORE));
+} catch (e) {}
+if (!st || !st.users) st = seed();
+const save = () => {
+  try {
+    localStorage.setItem(STORE, JSON.stringify(st));
+  } catch (e) {}
+};
+
+const ui = { tab: 'home', stack: [], clubTab: 'events', period: 'all', eventTab: null, ptype: 'doubles', sheet: null };
+const top = () => ui.stack[ui.stack.length - 1];
+const go = (v) => {
+  ui.stack.push(v);
+  render();
+};
+
+const memberOf = (clubId, uid) => st.members.find((m) => m.clubId === clubId && m.userId === uid);
+const isAdmin = (clubId) => ['owner', 'admin'].includes((memberOf(clubId, ME) || {}).role);
+const clubOf = (id) => st.clubs.find((c) => c._id === id);
+const eventOf = (id) => st.events.find((e) => e._id === id);
+const joinedOf = (eid) => st.signups.filter((s) => s.eventId === eid && s.status === 'joined').sort((a, b) => a.createdAt - b.createdAt);
+const waitOf = (eid) => st.signups.filter((s) => s.eventId === eid && s.status === 'waitlist').sort((a, b) => a.createdAt - b.createdAt);
+const currency = (clubId) => (clubOf(clubId).settings.currency || 'A$');
+
+function avatar(u, cls = '') {
+  return `<div class="avatar ${cls}" style="background:${u.color}">${esc(u.nickName[0])}</div>`;
+}
+
+// ---------------- 页面 ----------------
+function viewHome(t) {
+  const me = st.users[ME];
+  const myClubs = st.members.filter((m) => m.userId === ME).map((m) => ({ ...clubOf(m.clubId), role: m.role }));
+  const ids = myClubs.map((c) => c._id);
+  const events = st.events
+    .filter((e) => ids.includes(e.clubId) && e.endTime >= Date.now() - 6 * 3600000)
+    .sort((a, b) => a.startTime - b.startTime);
+  return `
+  <div class="card hero" data-act="tab" data-tab="me" role="button" tabindex="0">
+    <div class="row">${avatar(me)}<div class="grow"><div class="bold">${esc(me.nickName)}</div>
+      <div class="muted">${esc(f(t.gamesSummary, me.doubles.games, me.singles.games))}</div></div></div>
+    <div class="ratings">
+      <div><div class="muted">${t.doublesRating}</div><div class="rating-big num">${fmt.ratingLabel(me.doubles)}</div></div>
+      <div><div class="muted">${t.singlesRating}</div><div class="rating-big num">${fmt.ratingLabel(me.singles)}</div></div>
+    </div>
+  </div>
+  <div class="section-title">${t.upcoming}</div>
+  <div class="card flush">${
+    events.length
+      ? events
+          .map((e) => {
+            const mine = st.signups.find((s) => s.eventId === e._id && s.userId === ME && s.status !== 'cancelled');
+            return `<div class="item" data-act="event" data-id="${e._id}" role="button" tabindex="0"><div class="grow">
+          <div class="ellipsis"><span class="bold">${esc(e.title)}</span><span class="tag ${e.status === 'playing' ? 'clay' : ''}">${fmt.status(e.status)}</span>${mine ? `<span class="tag gray">${t['signed_' + mine.status]}</span>` : ''}</div>
+          <div class="muted">${esc(clubOf(e.clubId).name)} · ${fmt.range(e.startTime, e.endTime)}</div>
+          <div class="muted ellipsis">📍 ${esc(e.location)}</div></div>
+          <div class="muted num">${joinedOf(e._id).length}/${e.capacity}</div></div>`;
+          })
+          .join('')
+      : `<div class="empty">${t.noEvents}</div>`
+  }</div>
+  <div class="section-title">${t.myClubs}<button class="link" data-act="rules">${t.rulesLink}</button></div>
+  <div class="card flush">${myClubs
+    .map(
+      (c) => `<div class="item" data-act="club" data-id="${c._id}" role="button" tabindex="0">
+        <div class="avatar" style="background:var(--btn)">${esc(c.name[0])}</div>
+        <div class="grow"><div class="bold ellipsis">${esc(c.name)}</div>
+        <div class="muted">${esc(c.city)} · ${f(t.membersN, st.members.filter((m) => m.clubId === c._id).length)}</div></div>
+        ${c.role !== 'member' ? `<span class="tag">${fmt.role(c.role)}</span>` : ''}</div>`
+    )
+    .join('')}</div>
+  <div class="btn-row"><button class="btn" data-act="na">${t.createClub}</button><button class="btn ghost" data-act="na">${t.joinByCode}</button></div>`;
+}
+
+function viewClub(t, id) {
+  const c = clubOf(id);
+  const role = (memberOf(id, ME) || {}).role;
+  const admin = isAdmin(id);
+  const members = st.members
+    .filter((m) => m.clubId === id)
+    .map((m) => ({ ...st.users[m.userId], role: m.role }))
+    .sort((a, b) => ({ owner: 0, admin: 1, member: 2 })[a.role] - ({ owner: 0, admin: 1, member: 2 })[b.role] || b.doubles.rating - a.doubles.rating);
+  let body = '';
+  if (ui.clubTab === 'events') {
+    const evs = st.events.filter((e) => e.clubId === id).sort((a, b) => b.startTime - a.startTime);
+    body = `${admin ? `<button class="btn" data-act="na">${t.newEvent}</button>` : ''}
+    <div class="card flush">${
+      evs.length
+        ? evs
+            .map(
+              (e) => `<div class="item" data-act="event" data-id="${e._id}" role="button" tabindex="0"><div class="grow">
+          <div class="ellipsis"><span class="bold">${esc(e.title)}</span><span class="tag ${e.status === 'playing' ? 'clay' : e.status === 'finished' ? 'gray' : ''}">${fmt.status(e.status)}</span></div>
+          <div class="muted">${fmt.range(e.startTime, e.endTime)}</div></div><div class="muted num">${joinedOf(e._id).length}/${e.capacity}</div></div>`
+            )
+            .join('')
+        : `<div class="empty">${t.noClubEvents}</div>`
+    }</div>`;
+  } else if (ui.clubTab === 'board') {
+    const since = { week: Date.now() - 7 * DAY, month: Date.now() - 30 * DAY, all: 0 }[ui.period];
+    const rows = aggregate(st.matches.filter((m) => m.clubId === id && m.playedAt >= since), c.settings);
+    body = `<div class="tabs small">${['week', 'month', 'all']
+      .map((p) => `<button class="${ui.period === p ? 'on' : ''}" data-act="period" data-p="${p}">${t[{ week: 'last7', month: 'last30', all: 'allTime' }[p]]}</button>`)
+      .join('')}</div>
+    <div class="card">${
+      rows.length
+        ? `<div class="table"><div class="tr th"><span class="rank">#</span><span class="name">${t.colPlayer}</span><span class="c">${t.colWL}</span><span class="c">${t.colWinRate}</span><span class="c">${t.colDiff}</span><span class="c">${t.colPoints}</span></div>
+        ${rows
+          .map(
+            (r) => `<div class="tr" data-act="player" data-id="${r.userId}" role="button" tabindex="0"><span class="rank ${r.rank <= 3 ? 'top' : ''}">${r.rank}</span><span class="name">${esc(st.users[r.userId].nickName)}</span>
+          <span class="c">${r.wins}-${r.losses}</span><span class="c">${Math.round(r.winRate)}%</span><span class="c ${r.diff > 0 ? 'up' : r.diff < 0 ? 'down' : ''}">${r.diff > 0 ? '+' : ''}${r.diff}</span><span class="c bold">${r.score}</span></div>`
+          )
+          .join('')}</div>`
+        : `<div class="empty">${t.noBoard}</div>`
+    }<div class="muted" style="margin-top:10px">${esc(f(t.boardRule, c.settings.winPoints, c.settings.lossPoints))}</div></div>`;
+  } else {
+    body = `${admin ? `<button class="btn ghost" data-act="na">${t.addGuestBtn}</button>` : ''}
+    <div class="card flush">${members
+      .map(
+        (m) => `<div class="item" data-act="player" data-id="${m._id}" role="button" tabindex="0">${avatar(m)}
+        <div class="grow"><div class="ellipsis"><span class="bold">${esc(m.nickName)}</span>${m.role !== 'member' ? `<span class="tag">${fmt.role(m.role)}</span>` : ''}${m.guest ? `<span class="tag gray">${t.guest}</span>` : ''}</div>
+        <div class="muted">${esc(f(t.memberWL, m.doubles.wins, m.doubles.losses))}</div></div>
+        <div class="center"><div class="bold num" style="color:var(--accent)">${fmt.ratingLabel(m.doubles)}</div><div class="muted">${t.doublesRating}</div></div></div>`
+      )
+      .join('')}</div>`;
+  }
+  return `
+  <div class="card"><div class="row"><div class="avatar lg" style="background:var(--btn)">${esc(c.name[0])}</div>
+    <div class="grow"><div class="bold" style="font-size:18px">${esc(c.name)}</div><div class="muted">${esc(c.city)} · ${f(t.membersN, members.length)}</div></div>
+    ${role !== 'member' ? `<span class="tag">${fmt.role(role)}</span>` : ''}</div>
+    ${c.intro ? `<div class="p">${esc(c.intro)}</div>` : ''}
+    <div class="row between" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+      <span class="muted">${t.inviteCode} <b style="color:var(--accent);letter-spacing:2px">${c.inviteCode}</b></span>
+      <button class="btn ghost mini" data-act="na">${t.shareInvite}</button></div></div>
+  <div class="tabs">${['events', 'board', 'members']
+    .map((k) => `<button class="${ui.clubTab === k ? 'on' : ''}" data-act="clubTab" data-k="${k}">${t[{ events: 'tabEvents', board: 'tabBoard', members: 'tabMembers' }[k]]}</button>`)
+    .join('')}</div>
+  ${body}`;
+}
+
+function viewEvent(t, id) {
+  const e = eventOf(id);
+  const admin = isAdmin(e.clubId);
+  const joined = joinedOf(id).map((s) => st.users[s.userId]);
+  const wait = waitOf(id).map((s) => st.users[s.userId]);
+  const mine = st.signups.find((s) => s.eventId === id && s.userId === ME && s.status !== 'cancelled');
+  const matches = st.matches.filter((m) => m.eventId === id).sort((a, b) => a.round - b.round || a.court - b.court);
+  const done = matches.filter((m) => m.status === 'done').length;
+  const tab = ui.eventTab || (matches.length ? 'matches' : 'players');
+  let body = '';
+  if (tab === 'players') {
+    body = `<div class="card">${
+      joined.length
+        ? `<div class="grid4">${joined
+            .map((u, i) => `<div class="cell" data-act="player" data-id="${u._id}" role="button" tabindex="0">${avatar(u)}<div class="nm ellipsis">${i + 1}. ${esc(u.nickName)}</div><div class="muted num" style="font-size:11px">${fmt.ratingLabel(u.doubles)}</div></div>`)
+            .join('')}</div>`
+        : `<div class="empty">${t.noSignups}</div>`
+    }</div>
+    ${wait.length ? `<div class="section-title">${t.waitlist}</div><div class="card flush">${wait.map((u, i) => `<div class="item"><span class="muted">${f(t.waitNo, i + 1)}</span><span class="grow">${esc(u.nickName)}</span></div>`).join('')}</div>` : ''}`;
+  } else if (tab === 'matches') {
+    const rounds = [...new Set(matches.map((m) => m.round))];
+    body = `${admin ? `<div class="btn-row"><button class="btn" data-act="openGen">${matches.length ? t.regenerate : t.generate}</button><button class="btn ghost" data-act="na">${t.addOne}</button></div>` : ''}
+    ${!matches.length ? `<div class="card empty">${admin ? t.noMatchesAdmin : t.noMatches}</div>` : ''}
+    ${rounds
+      .map((rn) => {
+        const ms = matches.filter((m) => m.round === rn);
+        return `<div class="section-title">${f(t.roundN, rn)}${ms.every((m) => m.status === 'done') ? `<span class="muted">${t.roundDone}</span>` : ''}</div>
+        ${ms.map((m) => matchCard(t, m, admin)).join('')}`;
+      })
+      .join('')}`;
+  } else {
+    const rows = aggregate(matches, clubOf(e.clubId).settings);
+    body = `<div class="card">${
+      rows.length
+        ? `<div class="table"><div class="tr th"><span class="rank">#</span><span class="name">${t.colPlayer}</span><span class="c">${t.colWL}</span><span class="c w">${t.colScores}</span><span class="c">${t.colDiff}</span><span class="c">${t.colPoints}</span></div>
+      ${rows
+        .map(
+          (r) => `<div class="tr" data-act="player" data-id="${r.userId}" role="button" tabindex="0"><span class="rank ${r.rank <= 3 ? 'top' : ''}">${r.rank}</span><span class="name">${esc(st.users[r.userId].nickName)}</span>
+        <span class="c">${r.wins}-${r.losses}</span><span class="c w">${r.pointsFor}/${r.pointsAgainst}</span><span class="c ${r.diff > 0 ? 'up' : r.diff < 0 ? 'down' : ''}">${r.diff > 0 ? '+' : ''}${r.diff}</span><span class="c bold">${r.score}</span></div>`
+        )
+        .join('')}</div>`
+        : `<div class="empty">${t.noStandings}</div>`
+    }</div>`;
+  }
+  const signBtn =
+    e.status === 'finished'
+      ? ''
+      : !mine
+      ? `<button class="btn" data-act="signup">${t.signup}</button>`
+      : `<button class="btn warn" data-act="cancelSignup">${mine.status === 'joined' ? t.cancelSignup : t.waitlistCancel}</button>`;
+  return `
+  <div class="card">
+    <div class="row between"><span class="bold" style="font-size:18px">${esc(e.title)}</span><span class="tag ${e.status === 'playing' ? 'clay' : e.status === 'finished' ? 'gray' : ''}">${fmt.status(e.status)}</span></div>
+    <div class="p">🕘 ${fmt.range(e.startTime, e.endTime)}</div>
+    <div class="p">📍 ${esc(e.location)}</div>
+    <div class="p">🏓 ${f(t.courtsInfo, e.courts, joined.length, e.capacity)}${wait.length ? ' · ' + f(t.waitN, wait.length) : ''}${e.fee ? ' · ' + f(t.feePer, currency(e.clubId) + e.fee) : ''}</div>
+    <div class="p"><button class="link" data-act="club" data-id="${e.clubId}">🏠 ${esc(clubOf(e.clubId).name)} ›</button></div>
+    ${e.note ? `<div class="formula" style="font-family:var(--body)">${esc(e.note)}</div>` : ''}
+    <div class="btn-row" style="margin-top:14px">${signBtn}<button class="btn ghost" data-act="na">${t.share}</button></div>
+  </div>
+  <div class="tabs">
+    <button class="${tab === 'players' ? 'on' : ''}" data-act="eventTab" data-k="players">${f(t.tabPlayers, joined.length)}</button>
+    <button class="${tab === 'matches' ? 'on' : ''}" data-act="eventTab" data-k="matches">${f(t.tabMatches, done, matches.length)}</button>
+    <button class="${tab === 'standings' ? 'on' : ''}" data-act="eventTab" data-k="standings">${t.tabStandings}</button>
+  </div>
+  ${body}`;
+}
+
+function matchCard(t, m, admin) {
+  const ch = {};
+  (m.ratingChanges || []).forEach((c) => (ch[c.id] = c.delta));
+  const users = (team) => team.map((id) => st.users[id]);
+  const done = m.status === 'done';
+  const name = (u, right) => {
+    const d = done ? `<span class="d ${ch[u._id] > 0 ? 'up' : 'down'}">${fmt.delta(ch[u._id])}</span>` : '';
+    return `<div class="pname">${right ? d : ''}<span class="ellipsis">${esc(u.nickName)}</span>${right ? '' : d}</div>`;
+  };
+  const canScore = admin || (m.players.includes(ME) && !done);
+  return `<div class="card match ${m.players.includes(ME) ? 'mine' : ''}" data-act="${canScore ? 'openScore' : ''}" data-id="${m._id}" ${canScore ? 'role="button" tabindex="0"' : ''}>
+    <div class="muted" style="margin-bottom:6px">${f(t.courtN, m.court)}${m.type === 'singles' ? ' · ' + t.singles : ''}</div>
+    <div class="teams">
+      <div class="team ${done && m.scoreA > m.scoreB ? 'win' : ''}">${users(m.teamA).map((u) => name(u, false)).join('')}</div>
+      <div class="score">${
+        done
+          ? `<span class="${m.scoreA > m.scoreB ? '' : 'lose'}">${m.scoreA}</span><span class="lose">:</span><span class="${m.scoreB > m.scoreA ? '' : 'lose'}">${m.scoreB}</span>`
+          : `<div class="vs">VS</div><div class="pred">${f(t.predicted, predict(users(m.teamA), users(m.teamB), m.type))}</div>${canScore ? `<span class="tag" style="margin:4px 0 0">${t.enterScore}</span>` : ''}`
+      }</div>
+      <div class="team right ${done && m.scoreB > m.scoreA ? 'win' : ''}">${users(m.teamB).map((u) => name(u, true)).join('')}</div>
+    </div></div>`;
+}
+
+function viewProfile(t, uid) {
+  const u = st.users[uid];
+  const self = uid === ME;
+  const type = ui.ptype;
+  const b = u[type];
+  const rel = Math.round(R.reliability(b.games) * 100);
+  const hist = st.history.filter((h) => h.userId === uid && h.type === type).sort((a, c) => a.at - c.at);
+  const recent = st.matches
+    .filter((m) => m.status === 'done' && m.players.includes(uid))
+    .sort((a, c) => c.playedAt - a.playedAt)
+    .slice(0, 15);
+  const sep = i18n.getLang() === 'zh' ? '、' : ', ';
+  return `
+  <div class="card"><div class="row">${avatar(u, 'lg')}<div class="grow">
+    <div class="bold" style="font-size:19px">${esc(u.nickName)}${u.guest ? `<span class="tag gray">${t.guestPlayer}</span>` : ''}</div>
+    ${self ? `<div class="muted">${t.tapAvatar}</div>` : ''}</div></div></div>
+  <div class="tabs">${['doubles', 'singles'].map((k) => `<button class="${type === k ? 'on' : ''}" data-act="ptype" data-k="${k}">${t[k]}</button>`).join('')}</div>
+  <div class="card">
+    <div class="row between"><div><div class="muted">${esc(f(t.ratingSim, type === 'doubles' ? t.doublesRating : t.singlesRating))}</div>
+      <div class="row" style="gap:4px"><span class="rating-big num">${fmt.rating(b.rating)}</span>${b.games < 6 ? `<span class="tag clay">${t.provisional}</span>` : ''}</div></div>
+      <button class="link" data-act="rules">${t.howCalc}</button></div>
+    <div class="stats">
+      <div><div class="bold num">${b.games}</div><div class="muted">${t.games}</div></div>
+      <div><div class="bold num">${b.wins}-${b.losses}</div><div class="muted">${t.colWL}</div></div>
+      <div><div class="bold num">${b.games ? Math.round((b.wins / b.games) * 100) : 0}%</div><div class="muted">${t.colWinRate}</div></div>
+      <div><div class="bold num">${rel}%</div><div class="muted">${t.reliability}</div></div>
+    </div>
+    <div class="bar"><div style="width:${rel}%"></div></div>
+    ${hist.length >= 2 ? chart(hist) : `<div class="empty">${t.chartEmpty}</div>`}
+  </div>
+  <div class="section-title">${t.recentGames}</div>
+  <div class="card flush">${
+    recent.length
+      ? recent
+          .map((m) => {
+            const a = m.teamA.includes(uid);
+            const won = a ? m.scoreA > m.scoreB : m.scoreB > m.scoreA;
+            const mineT = a ? m.teamA : m.teamB;
+            const opp = a ? m.teamB : m.teamA;
+            const partner = mineT.filter((p) => p !== uid).map((p) => st.users[p].nickName).join(sep);
+            const d = ((m.ratingChanges || []).find((c) => c.id === uid) || {}).delta || 0;
+            return `<div class="item" style="cursor:default"><div class="wl ${won ? 'w' : 'l'}">${won ? t.winShort : t.lossShort}</div>
+          <div class="grow"><div class="ellipsis">${partner ? esc(f(t.withPartner, partner)) : ''}<span class="muted">vs</span> ${esc(opp.map((p) => st.users[p].nickName).join(sep))}</div>
+          <div class="muted">${fmt.shortDate(m.playedAt)} · ${m.type === 'singles' ? t.singles : t.doubles}</div></div>
+          <div class="center"><div class="bold num">${a ? m.scoreA + ':' + m.scoreB : m.scoreB + ':' + m.scoreA}</div><div class="d ${d > 0 ? 'up' : d < 0 ? 'down' : 'muted'}">${fmt.delta(d)}</div></div></div>`;
+          })
+          .join('')
+      : `<div class="empty">${t.noGames}</div>`
+  }</div>
+  ${
+    self
+      ? `<div class="card"><div class="field"><label for="lang">🌐 ${t.language}</label>
+      <select id="lang" class="lang-select" data-change="lang">${i18n.LANG_NAMES.map((n, i) => `<option value="${i18n.LANGS[i]}" ${i18n.LANGS[i] === i18n.getLang() ? 'selected' : ''}>${n}</option>`).join('')}</select></div></div>`
+      : ''
+  }`;
+}
+
+// 评分走势折线（SVG，颜色取主题变量）
+function chart(hist) {
+  const vals = [hist[0].before, ...hist.map((h) => h.after)];
+  let lo = Math.min(...vals);
+  let hi = Math.max(...vals);
+  if (hi - lo < 0.2) {
+    lo -= 0.1;
+    hi += 0.1;
+  }
+  const W = 320;
+  const H = 130;
+  const P = { l: 36, r: 8, t: 10, b: 12 };
+  const x = (i) => P.l + ((W - P.l - P.r) * i) / (vals.length - 1);
+  const y = (v) => P.t + ((H - P.t - P.b) * (hi - v)) / (hi - lo);
+  const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const grid = [hi, (hi + lo) / 2, lo]
+    .map((v) => `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="2" y="${y(v) + 3}" font-size="10" fill="var(--muted)">${v.toFixed(2)}</text>`)
+    .join('');
+  const last = vals[vals.length - 1];
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="rating trend">${grid}
+    <polygon points="${P.l},${H - P.b} ${pts} ${x(vals.length - 1)},${H - P.b}" fill="var(--accent-soft)" opacity="0.7"/>
+    <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="${x(vals.length - 1)}" cy="${y(last)}" r="3.5" fill="var(--accent)"/></svg>`;
+}
+
+function viewRules(t) {
+  const rows = [0, 0.25, 0.5, 1, 1.5, 2].map((d) => {
+    const e = R.expectedShare(3.5 + d, 3.5);
+    return `<div class="tr" style="cursor:default"><span class="name num">${d.toFixed(2)}</span><span class="c w num">${Math.round(e * 100)}%</span><span class="c w num">11:${Math.round((11 * (1 - e)) / e)}</span></div>`;
+  });
+  return `
+  <div class="card"><div class="h">${t.r_t1}</div><div class="p">${t.r_p1}</div><div class="p">${t.r_p2}</div>
+    <div class="formula">${t.r_f1}</div><div class="formula">${t.r_f2}</div><div class="formula">${t.r_f3}</div><div class="p">${t.r_p3}</div></div>
+  <div class="card"><div class="h">${t.r_t2}</div><div class="table"><div class="tr th"><span class="name">${t.r_colGap}</span><span class="c w">${t.r_colShare}</span><span class="c w">${t.r_colScore}</span></div>${rows.join('')}</div>
+    <div class="p muted">${t.r_p4}</div></div>
+  <div class="card"><div class="h">${t.r_t3}</div><div class="p">${t.r_p5}</div><div class="p">${t.r_p6}</div></div>
+  <div class="card"><div class="h">${t.r_t4}</div><div class="p">${t.r_p7}</div></div>
+  <div class="card"><div class="h">${t.r_t5}</div><div class="p">${t.r_p8}</div><div class="p muted">${t.r_disclaimer}</div></div>`;
+}
+
+// ---------------- 弹层 ----------------
+function sheetHtml(t) {
+  const s = ui.sheet;
+  if (!s) return '';
+  if (s.kind === 'gen') {
+    const e = eventOf(s.eventId);
+    const modes = ['rotation', 'balanced', 'fixed', 'singles', 'singlesRR'];
+    const rr = ['fixed', 'singlesRR'].includes(s.mode);
+    return `<div class="mask" data-act="closeSheet"><div class="sheet" data-stop="1">
+      <h3>${f(t.genTitle, joinedOf(e._id).length)}</h3>
+      ${modes.map((k) => `<button class="mode ${s.mode === k ? 'on' : ''}" data-act="pickMode" data-k="${k}"><div class="bold">${t['mode_' + k]}</div><div class="muted">${t['mode_' + k + '_d']}</div></button>`).join('')}
+      <div class="field"><label for="genCourts">${t.courts}</label><input id="genCourts" type="number" inputmode="numeric" value="${s.courts}"></div>
+      ${rr ? `<div class="muted">${t.rrNote}</div>` : `<div class="field"><label for="genRounds">${t.rounds}</label><input id="genRounds" type="number" inputmode="numeric" value="${s.rounds}"></div>`}
+      <div class="btn-row"><button class="btn ghost" data-act="closeSheet">${t.cancel}</button><button class="btn" data-act="generate">${t.generateBtn}</button></div>
+    </div></div>`;
+  }
+  if (s.kind === 'score') {
+    const m = st.matches.find((x) => x._id === s.matchId);
+    const admin = isAdmin(m.clubId);
+    const names = (team) => team.map((id) => `<div class="ellipsis">${esc(st.users[id].nickName)}</div>`).join('');
+    const side = (k, team) => `<div class="side"><div class="names">${names(team)}</div>
+      <div class="stepper"><button class="st" data-act="step" data-k="${k}" data-d="-1" aria-label="-1">−</button>
+      <input id="${k}" type="number" inputmode="numeric" min="0" max="99" value="${s[k]}"><button class="st" data-act="step" data-k="${k}" data-d="1" aria-label="+1">＋</button></div>
+      <button class="quick" data-act="quick" data-k="${k}">11</button></div>`;
+    const pred = predict(m.teamA.map((id) => st.users[id]), m.teamB.map((id) => st.users[id]), m.type);
+    return `<div class="mask" data-act="closeSheet"><div class="sheet" data-stop="1">
+      <h3>${f(t.scoreTitle, m.round, m.court)}</h3>
+      <div class="score-edit">${side('scoreA', m.teamA)}<div class="colon">:</div>${side('scoreB', m.teamB)}</div>
+      <div class="muted center">${esc(f(t.scoreHint, pred))}</div>
+      <div class="btn-row">${admin ? `<button class="btn warn" data-act="deleteMatch">${t.delete}</button>` : ''}<button class="btn" data-act="submitScore">${m.status === 'done' ? t.updateScore : t.submit}</button></div>
+    </div></div>`;
+  }
+  return '';
+}
+
+// ---------------- 渲染 ----------------
+function render() {
+  const t = i18n.dict();
+  const v = top();
+  let title = t.appName;
+  let html;
+  if (!v) {
+    if (ui.tab === 'home') html = viewHome(t);
+    else {
+      title = t.tabMe;
+      html = viewProfile(t, ME);
+    }
+  } else if (v.view === 'club') {
+    title = clubOf(v.id).name;
+    html = viewClub(t, v.id);
+  } else if (v.view === 'event') {
+    title = eventOf(v.id).title;
+    html = viewEvent(t, v.id);
+  } else if (v.view === 'player') {
+    title = st.users[v.id].nickName;
+    html = viewProfile(t, v.id);
+  } else {
+    title = t.r_nav;
+    html = viewRules(t);
+  }
+  const icon = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  document.getElementById('app').innerHTML = `
+    <div class="banner"><span>${px('banner')}</span><button data-act="reset">${px('reset')}</button></div>
+    <div class="nav">${ui.stack.length ? `<button class="back" data-act="back" aria-label="Back">‹</button>` : '<span></span>'}<div class="title">${esc(title)}</div><div class="capsule" aria-hidden="true">•••<span>◎</span></div></div>
+    <div class="scroll" id="scroll"><div class="page">${html}</div></div>
+    ${ui.stack.length ? '' : `<nav class="tabbar">
+      <button class="${ui.tab === 'home' ? 'on' : ''}" data-act="tab" data-tab="home">${icon('<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>')}${t.tabHome}</button>
+      <button class="${ui.tab === 'me' ? 'on' : ''}" data-act="tab" data-tab="me">${icon('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>')}${t.tabMe}</button></nav>`}
+    ${sheetHtml(t)}
+    <div id="toast" class="toast" hidden></div>`;
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (el.hidden = true), 2200);
+}
+
+// 保持滚动位置的重绘（弹层开关、录分等）
+function rerender(keepScroll = true) {
+  const y = keepScroll && document.getElementById('scroll') ? document.getElementById('scroll').scrollTop : 0;
+  render();
+  if (keepScroll) document.getElementById('scroll').scrollTop = y;
+}
+
+// ---------------- 交互 ----------------
+const num = (id) => {
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+};
+
+const actions = {
+  back() {
+    ui.stack.pop();
+    ui.sheet = null;
+    render();
+  },
+  tab(d) {
+    ui.stack = [];
+    ui.tab = d.tab;
+    render();
+  },
+  club(d) {
+    ui.clubTab = 'events';
+    go({ view: 'club', id: d.id });
+  },
+  event(d) {
+    ui.eventTab = null;
+    go({ view: 'event', id: d.id });
+  },
+  player(d) {
+    if (d.id === ME && !ui.stack.length) return;
+    ui.ptype = 'doubles';
+    go({ view: 'player', id: d.id });
+  },
+  rules() {
+    go({ view: 'rules' });
+  },
+  na() {
+    toast(px('notInPreview'));
+  },
+  reset() {
+    st = seed();
+    save();
+    ui.stack = [];
+    ui.tab = 'home';
+    ui.sheet = null;
+    render();
+    toast(px('resetDone'));
+  },
+  clubTab(d) {
+    ui.clubTab = d.k;
+    rerender();
+  },
+  period(d) {
+    ui.period = d.p;
+    rerender();
+  },
+  eventTab(d) {
+    ui.eventTab = d.k;
+    rerender();
+  },
+  ptype(d) {
+    ui.ptype = d.k;
+    rerender();
+  },
+  signup() {
+    const e = eventOf(top().id);
+    const full = joinedOf(e._id).length >= e.capacity;
+    st.signups = st.signups.filter((s) => !(s.eventId === e._id && s.userId === ME));
+    st.signups.push({ eventId: e._id, userId: ME, status: full ? 'waitlist' : 'joined', createdAt: Date.now() });
+    save();
+    rerender();
+    toast(i18n.t(full ? 'signupFull' : 'signupOk'));
+  },
+  cancelSignup() {
+    const e = eventOf(top().id);
+    const s = st.signups.find((x) => x.eventId === e._id && x.userId === ME && x.status !== 'cancelled');
+    if (!s) return;
+    const was = s.status;
+    s.status = 'cancelled';
+    if (was === 'joined') {
+      const next = waitOf(e._id)[0];
+      if (next) next.status = 'joined';
+    }
+    save();
+    rerender();
+  },
+  openGen() {
+    const e = eventOf(top().id);
+    if (joinedOf(e._id).length < 2) return toast(i18n.t('notEnough'));
+    ui.sheet = { kind: 'gen', eventId: e._id, mode: 'rotation', courts: e.courts, rounds: 6 };
+    rerender();
+  },
+  pickMode(d) {
+    ui.sheet.courts = num('genCourts') || ui.sheet.courts;
+    if (document.getElementById('genRounds')) ui.sheet.rounds = num('genRounds');
+    ui.sheet.mode = d.k;
+    rerender();
+  },
+  closeSheet() {
+    ui.sheet = null;
+    rerender();
+  },
+  generate() {
+    const s = ui.sheet;
+    const e = eventOf(s.eventId);
+    const courts = Number(num('genCourts'));
+    const rounds = Number(num('genRounds') || s.rounds);
+    if (!Number.isInteger(courts) || courts < 1 || courts > 30) return toast(i18n.errMsg('intRange', { field: 'courts', lo: 1, hi: 30 }));
+    if (!Number.isInteger(rounds) || rounds < 1 || rounds > 30) return toast(i18n.errMsg('intRange', { field: 'rounds', lo: 1, hi: 30 }));
+    const players = joinedOf(e._id).map((x) => x.userId);
+    const singles = s.mode === 'singles' || s.mode === 'singlesRR';
+    const kept = st.matches.filter((m) => m.eventId === e._id && m.status === 'done');
+    const ratings = {};
+    players.forEach((p) => (ratings[p] = st.users[p][singles ? 'singles' : 'doubles'].rating));
+    let plan;
+    try {
+      if (s.mode === 'fixed') {
+        if (players.length % 2) return toast(i18n.errMsg('fixedNeedsEven'));
+        const teams = [];
+        for (let i = 0; i < players.length; i += 2) teams.push([players[i], players[i + 1]]);
+        plan = S.roundRobin(teams, { courts });
+      } else if (s.mode === 'singlesRR') {
+        plan = S.roundRobin(players.map((p) => [p]), { courts });
+      } else {
+        plan = S.rotation(players, {
+          courts,
+          rounds,
+          teamSize: singles ? 1 : 2,
+          balance: s.mode === 'balanced',
+          ratings,
+          history: kept.filter((m) => (m.type === 'singles') === singles),
+        });
+      }
+    } catch (err) {
+      return toast(i18n.errMsg(err.message, err.params));
+    }
+    st.matches = st.matches.filter((m) => !(m.eventId === e._id && m.status !== 'done'));
+    const start = kept.reduce((mx, m) => Math.max(mx, m.round), 0);
+    let n = 0;
+    plan.rounds.forEach((r) => r.games.forEach((g) => (addMatchDoc(st, e, start + r.round, g.court, g.teamA, g.teamB), n++)));
+    if (e.status === 'open') e.status = 'playing';
+    ui.sheet = null;
+    ui.eventTab = 'matches';
+    save();
+    rerender(false);
+    toast(i18n.t('generatedN', n));
+  },
+  openScore(d) {
+    const m = st.matches.find((x) => x._id === d.id);
+    ui.sheet = { kind: 'score', matchId: m._id, scoreA: m.status === 'done' ? m.scoreA : '', scoreB: m.status === 'done' ? m.scoreB : '' };
+    rerender();
+  },
+  step(d) {
+    ui.sheet.scoreA = num('scoreA');
+    ui.sheet.scoreB = num('scoreB');
+    ui.sheet[d.k] = String(Math.max(0, Math.min(99, (Number(ui.sheet[d.k]) || 0) + Number(d.d))));
+    rerender();
+  },
+  quick(d) {
+    ui.sheet.scoreA = num('scoreA');
+    ui.sheet.scoreB = num('scoreB');
+    ui.sheet[d.k] = '11';
+    rerender();
+  },
+  submitScore() {
+    const ra = num('scoreA');
+    const rb = num('scoreB');
+    if (ra === '' || rb === '') return toast(i18n.t('fillBoth'));
+    const a = Number(ra);
+    const b = Number(rb);
+    const err = R.validateScore(a, b);
+    if (err) return toast(i18n.errMsg(err));
+    const m = st.matches.find((x) => x._id === ui.sheet.matchId);
+    const r = applyScore(st, m, a, b);
+    const mine = r.changes.find((c) => c.id === ME);
+    ui.sheet = null;
+    save();
+    rerender();
+    toast(mine ? i18n.t('ratingChange', fmt.delta(mine.delta)) : i18n.t('recorded'));
+  },
+  deleteMatch() {
+    const m = st.matches.find((x) => x._id === ui.sheet.matchId);
+    if (m.status === 'done') revert(st, m);
+    st.matches = st.matches.filter((x) => x !== m);
+    ui.sheet = null;
+    save();
+    rerender();
+  },
+};
+
+const app = document.getElementById('app');
+app.addEventListener('click', (ev) => {
+  const el = ev.target.closest('[data-act]');
+  if (!el || !el.dataset.act) return;
+  // 点弹层内部不关闭
+  if (el.dataset.act === 'closeSheet' && el.classList.contains('mask') && ev.target.closest('[data-stop]')) return;
+  const fn = actions[el.dataset.act];
+  if (fn) fn(el.dataset);
+});
+app.addEventListener('keydown', (ev) => {
+  if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches('[role="button"][data-act]')) {
+    ev.preventDefault();
+    ev.target.click();
+  }
+});
+app.addEventListener('change', (ev) => {
+  if (ev.target.dataset.change === 'lang') {
+    i18n.setLang(ev.target.value);
+    document.documentElement.lang = ev.target.value;
+    render();
+  }
+});
+
+document.documentElement.lang = i18n.getLang();
+save();
+render();
