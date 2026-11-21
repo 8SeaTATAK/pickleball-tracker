@@ -273,3 +273,18 @@ test('创建俱乐部上限：普通用户 1 个，VIP 3 个', async () => {
   r = await call('createClub', { name: 'E' });
   assert.deepStrictEqual(r.params, { n: 1 });
 });
+
+test('环境变量 VIP_OPENIDS 里的账号是永久 VIP', async () => {
+  const { as, ok } = setup();
+  const call = as('founder');
+  const F = ok(call);
+  await F('login');
+  process.env.VIP_OPENIDS = 'someone, founder';
+  try {
+    for (const n of ['A', 'B', 'C']) await F('createClub', { name: n });
+    const r = await call('createClub', { name: 'D' });
+    assert.deepStrictEqual(r.params, { n: 3 });
+  } finally {
+    delete process.env.VIP_OPENIDS;
+  }
+});

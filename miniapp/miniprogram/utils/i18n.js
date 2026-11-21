@@ -773,6 +773,7 @@ const L = {
   allPaid: ['已全部付清', 'All paid', 'Đã trả đủ', 'Semua telah bayar'],
   noBills: ['还没有收款记录', 'No payment lists yet', 'Chưa có danh sách thu', 'Belum ada senarai bayaran'],
   pendingN: ['{0} 待处理', '{0} pending', '{0} đang chờ', '{0} belum selesai'],
+  vipForever: ['长期有效', 'No expiry', 'Không giới hạn thời gian', 'Tiada tarikh tamat'],
   err_nameChangeLimit: ['30 天内只能修改一次昵称，{date} 后可再修改', 'You can change your name once every 30 days. Next change: {date}', 'Bạn chỉ đổi tên được một lần mỗi 30 ngày. Lần đổi tiếp theo: {date}', 'Anda boleh menukar nama sekali setiap 30 hari. Seterusnya: {date}'],
   err_avatarChangeLimit: ['30 天内只能修改一次头像，{date} 后可再修改', 'You can change your avatar once every 30 days. Next change: {date}', 'Bạn chỉ đổi ảnh đại diện được một lần mỗi 30 ngày. Lần đổi tiếp theo: {date}', 'Anda boleh menukar avatar sekali setiap 30 hari. Seterusnya: {date}'],
   nextChangeHint: ['{0} 后可再修改', 'Next change: {0}', 'Lần đổi tiếp theo: {0}', 'Seterusnya: {0}'],

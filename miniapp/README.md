@@ -83,8 +83,9 @@ miniapp/
    - `matches`: `eventId`、`clubId + status + playedAt`、`players + status + playedAt`
    - `ratingHistory`: `userId + at`、`matchId`
    - `clubs`: `inviteCode`
-6. **部署云函数**：右键 `cloudfunctions/api` →「上传并部署：云端安装依赖」。
-7. 编译预览即可。头像会上传到云存储的 `avatars/` 目录。
+6. **（可选）设置永久 VIP**：云开发控制台 → 云函数 → `api` → 配置 → 环境变量，添加 `VIP_OPENIDS`，值为要设成永久 VIP 的用户 openid（多个用英文逗号分隔）。openid 可以在登录后的 `users` 集合里查到（每条记录的 `_id`）。
+7. **部署云函数**：右键 `cloudfunctions/api` →「上传并部署：云端安装依赖」。
+8. 编译预览即可。头像会上传到云存储的 `avatars/` 目录。
 
 ## 网页交互预览
 

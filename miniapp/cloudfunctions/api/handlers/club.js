@@ -13,8 +13,10 @@ const {
 } = require('./common');
 
 const CURRENCIES = ['A$', '¥', 'RM', 'S$', '₫', '$'];
-// VIP：premium 为 true，且未过期（premiumUntil 为空表示长期有效）
-const isVip = (u, now) => !!u.premium && (!u.premiumUntil || u.premiumUntil > now);
+// VIP：premium 为 true 且未过期（premiumUntil 为空表示长期有效）；
+// 或者 openid 在云函数环境变量 VIP_OPENIDS（逗号分隔）里——用于创始人等永久 VIP
+const vipOpenids = () => (process.env.VIP_OPENIDS || '').split(',').map((x) => x.trim()).filter(Boolean);
+const isVip = (u, now) => vipOpenids().includes(u._id) || (!!u.premium && (!u.premiumUntil || u.premiumUntil > now));
 
 const DEFAULT_SETTINGS = { winPoints: 3, lossPoints: 1, currency: 'A$' };
 

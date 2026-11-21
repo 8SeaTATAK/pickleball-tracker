@@ -10,7 +10,7 @@ const { predict } = __req('predict');
 const PR = __req('profileRules');
 
 const ME = 'me';
-const STORE = 'pp_state_v19';
+const STORE = 'pp_state_v20';
 const DAY = 86400000;
 
 // 预览专用文案
@@ -65,10 +65,11 @@ function seed() {
   );
   PEOPLE.filter(([id]) => !NON_MEMBERS.includes(id)).forEach(([id]) => st.members.push({ clubId: 'c1', userId: id, role: id === ME ? 'owner' : id === 'wei' ? 'admin' : 'member' }));
   st.members.forEach((m, i) => (m.joinedAt = now - (720 - i * 47) * DAY));
-  Object.assign(st.clubs.find((c) => c._id === 'c2'), { adminPerms: { money: false, certify: false }, joinMode: 'review', applications: [{ userId: 'nurul', at: now - 3 * DAY }] });
+  Object.assign(st.clubs.find((c) => c._id === 'c2'), { adminPerms: {}, shopEnabled: true, joinMode: 'review', applications: [{ userId: 'nurul', at: now - 3 * DAY }] });
   Object.assign(st.users.chen, { premium: true, premiumUntil: now + 200 * DAY });
+  Object.assign(st.users[ME], { premium: true, premiumUntil: null });
   st.clubs.find((c) => c._id === 'c3').shopEnabled = true;
-  Object.assign(st.clubs[0], { shopEnabled: false, short: 'NRP', joinMode: 'review', inviteWho: 'admins', views: 267, visitors: 36, notice: '本周六 9 点开打，请提前 10 分钟到场热身 · Warm up 10 min before 9am', applications: [{ userId: 'tom', at: now - 2 * DAY }, { userId: 'huong', at: now - DAY }] });
+  Object.assign(st.clubs[0], { shopEnabled: true, short: 'NRP', joinMode: 'review', inviteWho: 'admins', views: 267, visitors: 36, notice: '本周六 9 点开打，请提前 10 分钟到场热身 · Warm up 10 min before 9am', applications: [{ userId: 'tom', at: now - 2 * DAY }, { userId: 'huong', at: now - DAY }] });
   const CERT = { wei: 4.0, chen: 4.5, lin: 3.0, ben: 3.5 };
   st.members.filter((m) => m.clubId === 'c1' && CERT[m.userId]).forEach((m) => (m.cert = { value: CERT[m.userId], by: ME, at: now - 60 * DAY }));
   ['chen', 'wei', 'minh'].forEach((id, i) => st.members.push({ clubId: 'c3', userId: id, role: i === 0 ? 'owner' : 'member', joinedAt: now - 300 * DAY }));
@@ -332,7 +333,7 @@ function viewPremium(t) {
     ['pf_noLimit', false, true],
   ];
   return `<div class="card center"><span>${esc(f(t.currentPlan, ''))}</span><b class="hi">${vip ? 'VIP' : t.planFree}</b>
-    ${vip ? `<div class="muted">${esc(f(t.vipActive, fmt.date(u.premiumUntil)))}</div>` : `<div style="margin-top:10px"><button class="btn" data-act="becomeVip">${t.upgradeSim}</button></div>`}</div>
+ ${vip ? `<div class="muted">${u.premiumUntil ? esc(f(t.vipActive, fmt.date(u.premiumUntil))) : t.vipForever}</div>` : `<div style="margin-top:10px"><button class="btn" data-act="becomeVip">${t.upgradeSim}</button></div>`}</div>
   <div class="card"><div class="table">
     <div class="tr th"><span class="name">${t.colFeature}</span><span class="c w">${t.planFree}</span><span class="c w">VIP</span></div>
     ${rows.map(([k, a, b]) => `<div class="tr" style="cursor:default"><span class="name" style="white-space:normal">${t[k]}</span><span class="c w">${mark(a)}</span><span class="c w">${mark(b)}</span></div>`).join('')}
