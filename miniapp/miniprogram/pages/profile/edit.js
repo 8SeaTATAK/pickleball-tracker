@@ -20,6 +20,8 @@ Page({
     levelNames: [],
     levelIdx: -1,
     currentLevel: '',
+    nameLock: '',
+    avatarLock: '',
     saving: false,
   },
 
@@ -39,6 +41,9 @@ Page({
       genderIdx: Math.max(0, GENDERS.indexOf(u.gender || '')),
       canLevel: !u.doubles.games && !u.singles.games,
       currentLevel: fmt.rating(u.doubles.rating),
+      // 30 天内改过：显示下次可修改日期，并禁用对应控件
+      nameLock: u.nextNameChangeAt ? i18n.t('nextChangeHint', i18n.dayMonth(u.nextNameChangeAt)) : '',
+      avatarLock: u.nextAvatarChangeAt ? i18n.t('nextChangeHint', i18n.dayMonth(u.nextAvatarChangeAt)) : '',
     });
   },
 

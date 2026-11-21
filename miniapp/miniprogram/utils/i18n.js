@@ -292,6 +292,10 @@ const L = {
   upNext: ['待开赛', 'Up next', 'Sắp đấu', 'Akan datang'],
   finishedGames: ['已完赛', 'Finished', 'Đã xong', 'Selesai'],
   loadMore: ['加载更多', 'Load more', 'Tải thêm', 'Muat lagi'],
+  err_nameChangeLimit: ['30 天内只能修改一次昵称，{date} 后可再修改', 'You can change your name once every 30 days. Next change: {date}', 'Bạn chỉ đổi tên được một lần mỗi 30 ngày. Lần đổi tiếp theo: {date}', 'Anda boleh menukar nama sekali setiap 30 hari. Seterusnya: {date}'],
+  err_avatarChangeLimit: ['30 天内只能修改一次头像，{date} 后可再修改', 'You can change your avatar once every 30 days. Next change: {date}', 'Bạn chỉ đổi ảnh đại diện được một lần mỗi 30 ngày. Lần đổi tiếp theo: {date}', 'Anda boleh menukar avatar sekali setiap 30 hari. Seterusnya: {date}'],
+  nextChangeHint: ['{0} 后可再修改', 'Next change: {0}', 'Lần đổi tiếp theo: {0}', 'Seterusnya: {0}'],
+  changeRuleHint: ['昵称和头像 30 天内各可修改一次，首次设置不计入。', 'You can change your name and avatar once every 30 days each. Your first setup does not count.', 'Tên và ảnh đại diện mỗi thứ được đổi một lần mỗi 30 ngày. Lần thiết lập đầu tiên không tính.', 'Nama dan avatar masing-masing boleh ditukar sekali setiap 30 hari. Tetapan pertama tidak dikira.'],
   err_invalidGender: ['无效的性别', 'Invalid gender', 'Giới tính không hợp lệ', 'Jantina tidak sah'],
 
   // ---------- 规则页 ----------
@@ -447,12 +451,19 @@ function t(key, ...args) {
 }
 
 // 后端错误代码 → 文案；不认识的（如数据库原始报错）原样显示
+// 日期：中文 12月21日，其他语言 21/12
+function dayMonth(ts) {
+  const dt = new Date(ts);
+  return getLang() === 'zh' ? `${dt.getMonth() + 1}月${dt.getDate()}日` : `${dt.getDate()}/${dt.getMonth() + 1}`;
+}
+
 function errMsg(code, params) {
   const d = dict();
   const s = d['err_' + code];
   if (!s) return code;
   const p = Object.assign({}, params);
   if (p.field) p.field = d['f_' + p.field] || p.field;
+  if (p.at) p.date = dayMonth(p.at);
   return format(s, [p]);
 }
 
@@ -479,4 +490,4 @@ function levelTitle(doubles) {
   return t(r >= 4.5 ? 'lv_5' : r >= 4.0 ? 'lv_4' : r >= 3.5 ? 'lv_3' : r >= 3.0 ? 'lv_2' : 'lv_1');
 }
 
-module.exports = { levelTitle, LANGS, LANG_NAMES, getLang, setLang, dict, t, errMsg, weekday, applyTabBar, syncTabBar, format };
+module.exports = { dayMonth, levelTitle, LANGS, LANG_NAMES, getLang, setLang, dict, t, errMsg, weekday, applyTabBar, syncTabBar, format };

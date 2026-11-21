@@ -137,3 +137,18 @@ test('积分榜：积分/胜率/净胜分', () => {
   assert.deepStrictEqual([x.rank, x.wins, x.score, x.diff, x.winRate], [1, 2, 6, 9, 100]);
   assert.strictEqual(rows[rows.length - 1].userId, 'w');
 });
+
+test('头像/昵称修改规则', () => {
+  const { checkChange, nextChangeAt, COOLDOWN } = require('../lib/profileRules');
+  const now = 1e12;
+  assert.ok(checkChange({ guest: true, nickNameFirstSet: true, nickNameChangedAt: now }, 'nickName', now).allowed);
+  assert.deepStrictEqual(checkChange({}, 'nickName', now), { allowed: true, data: { nickNameFirstSet: true } });
+  const u = { nickNameFirstSet: true, nickNameChangedAt: now - COOLDOWN + 1 };
+  assert.deepStrictEqual(checkChange(u, 'nickName', now), { allowed: false, nextAt: now + 1 });
+  assert.strictEqual(nextChangeAt(u, 'nickName', now), now + 1);
+  assert.ok(checkChange(u, 'nickName', now + 1).allowed, '满 30 天可改');
+  assert.ok(checkChange({ ...u, premium: true }, 'nickName', now).allowed);
+  const c = checkChange({ ...u, changeCredits: { nickName: 2 } }, 'nickName', now);
+  assert.strictEqual(c.data['changeCredits.nickName'], 1);
+  assert.ok(checkChange({ ...u, avatarFirstSet: true }, 'avatar', now).allowed, '头像单独计时');
+});

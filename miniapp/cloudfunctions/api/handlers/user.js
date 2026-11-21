@@ -1,5 +1,6 @@
 const { getDoc, listAll, getByIds } = require('../lib/db');
 const { MIN_RATING, reliability } = require('../lib/rating');
+const { checkChange, nextChangeAt } = require('../lib/profileRules');
 const { fail, newRatingBlock, publicUser, usersMap, str } = require('./common');
 
 // 自评起始水平（参考 DUPR / USAP 自评描述），只在还没打过比赛时可设置
@@ -25,7 +26,13 @@ async function login(ctx, params = {}) {
     const { _id, ...data } = u;
     await db.collection('users').doc(openid).set({ data });
   }
-  return { ...publicUser(u), leveled: !!u.leveled };
+  const now = ctx.now();
+  return {
+    ...publicUser(u),
+    leveled: !!u.leveled,
+    nextNameChangeAt: nextChangeAt(u, 'nickName', now),
+    nextAvatarChangeAt: nextChangeAt(u, 'avatar', now),
+  };
 }
 
 async function updateProfile(ctx, { nickName, avatarUrl, gender, level }) {
@@ -33,8 +40,17 @@ async function updateProfile(ctx, { nickName, avatarUrl, gender, level }) {
   const u = await getDoc(db, 'users', openid);
   if (!u) fail('notLoggedIn');
   const data = {};
-  if (nickName != null) data.nickName = str(nickName, 20, 'nickName', true);
-  if (avatarUrl != null) data.avatarUrl = str(avatarUrl, 500, 'avatar');
+  // 昵称、头像：内容有变化才算一次修改，并受 30 天规则限制
+  const limited = [
+    ['nickName', nickName == null ? null : str(nickName, 20, 'nickName', true), u.nickName, 'nameChangeLimit'],
+    ['avatar', avatarUrl == null ? null : str(avatarUrl, 500, 'avatar'), u.avatarUrl || '', 'avatarChangeLimit'],
+  ];
+  for (const [field, value, current, err] of limited) {
+    if (value == null || value === current) continue;
+    const r = checkChange(u, field, ctx.now());
+    if (!r.allowed) fail(err, { at: r.nextAt });
+    Object.assign(data, r.data, { [field === 'avatar' ? 'avatarUrl' : 'nickName']: value });
+  }
   if (gender != null) {
     if (!['', 'm', 'f'].includes(gender)) fail('invalidGender');
     data.gender = gender;
@@ -47,7 +63,7 @@ async function updateProfile(ctx, { nickName, avatarUrl, gender, level }) {
     data.singles = newRatingBlock(lv);
     data.leveled = true;
   }
-  await db.collection('users').doc(openid).update({ data });
+  if (Object.keys(data).length) await db.collection('users').doc(openid).update({ data });
   return login(ctx);
 }
 

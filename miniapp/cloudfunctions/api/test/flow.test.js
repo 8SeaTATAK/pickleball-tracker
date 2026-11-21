@@ -16,7 +16,7 @@ function setup() {
     assert.ok(res.ok, `${action}: ${res.error}`);
     return res.data;
   };
-  return { db, as, ok };
+  return { db, as, ok, advance: (ms) => (t += ms) };
 }
 
 test('完整流程：建俱乐部 → 报名 → 生成对阵 → 录分 → 积分榜 → 改分/删分回滚', async () => {
@@ -218,4 +218,39 @@ test('我的页接口：性别、裁判场次、我的比赛、我的活动', as
   assert.strictEqual(mm.done[0].event.title, 'T');
   const me = await O('myEvents');
   assert.deepStrictEqual([me.length, me[0].mySignup, me[0].clubName], [1, 'joined', 'C']);
+});
+
+test('头像/昵称：首次不计、30 天一次、内容不变不算、临时球员不限', async () => {
+  const { as, ok, advance, db } = setup();
+  const call = as('u');
+  const U = ok(call);
+  await U('login');
+  await U('updateProfile', { nickName: 'A', avatarUrl: 'cloud://1' }); // 首次设置，不计
+  await U('updateProfile', { nickName: 'B', avatarUrl: 'cloud://2' }); // 第一次正式修改
+  let me = await U('login');
+  assert.ok(me.nextNameChangeAt > 0 && me.nextAvatarChangeAt > 0);
+  let r = await call('updateProfile', { nickName: 'C' });
+  assert.strictEqual(r.error, 'nameChangeLimit');
+  assert.strictEqual(r.params.at, me.nextNameChangeAt);
+  r = await call('updateProfile', { avatarUrl: 'cloud://3' });
+  assert.strictEqual(r.error, 'avatarChangeLimit');
+  // 内容没变、只改性别：不算修改
+  await U('updateProfile', { nickName: 'B', avatarUrl: 'cloud://2', gender: 'm' });
+  // 被拒时整次更新都不生效
+  r = await call('updateProfile', { nickName: 'C', gender: 'f' });
+  assert.strictEqual(r.error, 'nameChangeLimit');
+  assert.strictEqual((await U('login')).gender, 'm');
+  // 30 天后可以再改
+  advance(30 * 24 * 3600 * 1000);
+  me = await U('updateProfile', { nickName: 'C' });
+  assert.strictEqual(me.nickName, 'C');
+  assert.ok(me.nextNameChangeAt > 0);
+  assert.strictEqual(me.nextAvatarChangeAt, 0, '头像单独计时，仍可修改');
+  // 积分兑换的额外机会 / 付费用户
+  await db.collection('users').doc('u').update({ data: { 'changeCredits.nickName': 1 } });
+  me = await U('updateProfile', { nickName: 'D' });
+  assert.strictEqual(me.nickName, 'D');
+  assert.strictEqual((await call('updateProfile', { nickName: 'E' })).error, 'nameChangeLimit');
+  await db.collection('users').doc('u').update({ data: { premium: true } });
+  assert.strictEqual((await U('updateProfile', { nickName: 'E' })).nickName, 'E');
 });

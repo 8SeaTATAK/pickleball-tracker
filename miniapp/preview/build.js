@@ -9,6 +9,7 @@ const mods = {
   rating: 'cloudfunctions/api/lib/rating.js',
   schedule: 'cloudfunctions/api/lib/schedule.js',
   stats: 'cloudfunctions/api/lib/stats.js',
+  profileRules: 'cloudfunctions/api/lib/profileRules.js',
   i18n: 'miniprogram/utils/i18n.js',
   fmt: 'miniprogram/utils/fmt.js',
   predict: 'miniprogram/utils/predict.js',

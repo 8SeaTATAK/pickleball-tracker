@@ -1,19 +1,21 @@
 <view class="page">
   <view class="card">
-    <button class="avatar-pick" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+    <button class="avatar-pick" open-type="{{avatarLock ? '' : 'chooseAvatar'}}" bindchooseavatar="onChooseAvatar" disabled="{{!!avatarLock}}">
       <view class="avatar huge">
         <image wx:if="{{avatarUrl}}" src="{{avatarUrl}}" mode="aspectFill" />
         <text wx:else>{{nickName[0]}}</text>
       </view>
-      <text class="link">{{t.changeAvatar}}</text>
+      <text class="link" wx:if="{{!avatarLock}}">{{t.changeAvatar}}</text>
+      <text class="muted" wx:else>{{avatarLock}}</text>
     </button>
   </view>
 
   <view class="card">
     <view class="field">
       <text class="label">{{t.nickname}}</text>
-      <input type="nickname" placeholder="{{t.nicknamePh}}" placeholder-class="placeholder" maxlength="20" value="{{nickName}}" bindinput="onName" bindblur="onName" />
+      <input type="nickname" placeholder="{{t.nicknamePh}}" placeholder-class="placeholder" maxlength="20" value="{{nickName}}" bindinput="onName" bindblur="onName" disabled="{{!!nameLock}}" />
     </view>
+    <view class="muted lock" wx:if="{{nameLock}}">{{nameLock}}</view>
     <view class="field">
       <text class="label">{{t.gender}}</text>
       <picker range="{{genderNames}}" value="{{genderIdx}}" bindchange="onGender">
@@ -28,6 +30,7 @@
     </view>
   </view>
   <view class="muted hint" wx:if="{{canLevel}}">{{t.setLevelDesc}}</view>
+  <view class="muted hint">{{t.changeRuleHint}}</view>
 
   <button class="btn" bindtap="save" disabled="{{saving || !nickName}}">{{t.save}}</button>
 </view>

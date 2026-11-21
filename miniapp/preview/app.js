@@ -7,6 +7,7 @@ const { aggregate } = __req('stats');
 const i18n = __req('i18n');
 const fmt = __req('fmt');
 const { predict } = __req('predict');
+const PR = __req('profileRules');
 
 const ME = 'me';
 const STORE = 'pp_state_v2';
@@ -537,19 +538,28 @@ function viewEdit(t) {
   const e = ui.edit;
   const u = { ...st.users[ME], avatarUrl: e.avatarUrl, nickName: e.nickName || st.users[ME].nickName };
   const canLevel = !st.users[ME].doubles.games && !st.users[ME].singles.games;
+  // 与云函数相同的 30 天规则：冷却期内禁用并显示下次可修改日期
+  const nameAt = PR.nextChangeAt(st.users[ME], 'nickName', Date.now());
+  const avatarAt = PR.nextChangeAt(st.users[ME], 'avatar', Date.now());
   const LV = [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0];
   const lk = (l) => 'level_' + String(l).replace('.', '').replace(/0$/, '');
   return `
   <div class="card center">
-    <label class="avatar-pick" for="avatarFile">${avatar(u, 'xxl')}<span class="link">${t.changeAvatar}</span></label>
-    <input id="avatarFile" type="file" accept="image/*" data-change="avatar" hidden>
+    ${
+      avatarAt
+        ? `<div class="avatar-pick">${avatar(u, 'xxl')}<span class="muted">${esc(f(t.nextChangeHint, i18n.dayMonth(avatarAt)))}</span></div>`
+        : `<label class="avatar-pick" for="avatarFile">${avatar(u, 'xxl')}<span class="link">${t.changeAvatar}</span></label>
+    <input id="avatarFile" type="file" accept="image/*" data-change="avatar" hidden>`
+    }
   </div>
   <div class="card">
-    <div class="field"><label for="nick">${t.nickname}</label><input id="nick" maxlength="20" placeholder="${t.nicknamePh}" value="${esc(e.nickName)}" data-input="nick"></div>
+    <div class="field"><label for="nick">${t.nickname}</label><input id="nick" maxlength="20" placeholder="${t.nicknamePh}" value="${esc(e.nickName)}" data-input="nick" ${nameAt ? 'disabled' : ''}></div>
+    ${nameAt ? `<div class="muted" style="padding:0 0 8px 106px">${esc(f(t.nextChangeHint, i18n.dayMonth(nameAt)))}</div>` : ''}
     <div class="field"><label for="gender">${t.gender}</label><select id="gender" data-change="gender">${['', 'm', 'f'].map((g) => `<option value="${g}" ${e.gender === g ? 'selected' : ''}>${t['gender_' + g]}</option>`).join('')}</select></div>
     ${canLevel ? `<div class="field"><label for="level">${t.startLevel}</label><select id="level" data-change="level">${LV.map((l) => `<option value="${l}" ${e.level === l ? 'selected' : ''}>${l.toFixed(1)} ${t[lk(l)]}</option>`).join('')}</select></div>` : ''}
   </div>
   ${canLevel ? `<div class="muted" style="padding:0 4px">${t.setLevelDesc}</div>` : ''}
+  <div class="muted" style="padding:0 4px">${t.changeRuleHint}</div>
   <button class="btn" data-act="saveEdit">${t.save}</button>`;
 }
 
@@ -793,7 +803,14 @@ const actions = {
     const name = (e.nickName || '').trim();
     if (!name) return toast(i18n.errMsg('required', { field: 'nickName' }));
     const u = st.users[ME];
-    Object.assign(u, { nickName: name.slice(0, 20), gender: e.gender, avatarUrl: e.avatarUrl });
+    const patch = { gender: e.gender };
+    for (const [field, key, value] of [['nickName', 'nickName', name.slice(0, 20)], ['avatar', 'avatarUrl', e.avatarUrl]]) {
+      if (value === (u[key] || '')) continue;
+      const r = PR.checkChange(u, field, Date.now());
+      if (!r.allowed) return toast(i18n.errMsg(field === 'avatar' ? 'avatarChangeLimit' : 'nameChangeLimit', { at: r.nextAt }));
+      Object.assign(patch, r.data, { [key]: value });
+    }
+    Object.assign(u, patch);
     if (!u.doubles.games && !u.singles.games) {
       u.doubles.rating = e.level;
       u.singles.rating = e.level;
