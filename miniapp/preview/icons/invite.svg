@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="invite">
+  <!-- 我的邀请：米白信封 + 墨绿封口 + 黄球邮戳 -->
+  <rect x="4" y="11" width="40" height="29" rx="4" fill="#F6EBDD" stroke="#4A1E12" stroke-width="2"/>
+  <path d="M5 13 L24 28 L43 13" fill="#2E6E6A" stroke="#4A1E12" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M5 39 L18 25 M43 39 L30 25" stroke="#4A1E12" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="37" cy="10" r="7.5" fill="#E2772B"/>
+  <path d="M37 6.5 V13.5 M33.5 10 H40.5" stroke="#FFF" stroke-width="2.2" stroke-linecap="round"/>
+</svg>

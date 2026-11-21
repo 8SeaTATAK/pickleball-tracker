@@ -44,8 +44,7 @@
     <view class="cell" bindtap="go" data-url="/pages/guide/guide?topic=formats"><image class="ic ball" src="/images/formats.png" /><text>{{t.menu_formats}}</text></view>
     <view class="cell" bindtap="go" data-url="/pages/guide/guide?topic=start"><image class="ic ball" src="/images/guide.png" /><text>{{t.menu_guide}}</text></view>
     <view class="cell" bindtap="goClubs"><image class="ic ball" src="/images/club.png" /><text>{{t.myClubs}}</text></view>
-    <view class="cell" bindtap="go" data-url="/pages/rules/rules"><image class="ic ball" src="/images/rules.png" /><text>{{t.rulesLink}}</text></view>
-    <button class="cell plain" open-type="contact"><image class="ic ball" src="/images/contact.png" /><text>{{t.menu_contact}}</text></button>
+        <button class="cell plain" open-type="contact"><image class="ic ball" src="/images/contact.png" /><text>{{t.menu_contact}}</text></button>
   </view>
 
   <!-- 列表 -->

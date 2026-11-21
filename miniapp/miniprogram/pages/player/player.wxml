@@ -45,6 +45,12 @@
     <view class="empty" wx:else>{{t.chartEmpty}}</view>
   </view>
 
+  <view class="card list-link" bindtap="goRules">
+    <image class="li-img" src="/images/rules.png" />
+    <text class="grow">{{t.r_nav}}</text>
+    <text class="muted">›</text>
+  </view>
+
   <view class="section-title">{{t.recentGames}}</view>
   <view class="card">
     <view class="list-item" wx:for="{{matches}}" wx:key="_id">

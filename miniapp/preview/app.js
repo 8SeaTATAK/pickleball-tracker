@@ -10,7 +10,7 @@ const { predict } = __req('predict');
 const PR = __req('profileRules');
 
 const ME = 'me';
-const STORE = 'pp_state_v10';
+const STORE = 'pp_state_v16';
 const DAY = 86400000;
 
 // 预览专用文案
@@ -49,6 +49,7 @@ const COLORS = ['#216b43', '#b95c30', '#3c6e9c', '#7b5aa6', '#a0722a', '#2f8a83'
 function seed() {
   const rand = S.mulberry32(20261121);
   const truth = {};
+  const now = Date.now();
   const st = { users: {}, clubs: [], members: [], events: [], signups: [], matches: [], history: [], invites: [], seq: 1 };
   PEOPLE.forEach(([id, name, real, lv, guest], i) => {
     truth[id] = real;
@@ -59,12 +60,16 @@ function seed() {
   });
   st.clubs.push(
     { _id: 'c1', name: 'North Ryde Pickleball', city: 'Sydney', inviteCode: 'NR7K2P', intro: '每周六上午 Tennis World North Ryde · Saturday mornings, all levels welcome', venue: { name: 'Tennis World North Ryde', city: 'Sydney' }, payId: 'treasurer@example.com', settings: { winPoints: 3, lossPoints: 1, currency: 'A$' } },
+    { _id: 'c3', name: 'Ryde Elite 内部队', city: 'Sydney', inviteCode: 'RE3X9Q', intro: '4.0+ 内部训练和对抗，仅会员可见 · Members-only training for 4.0+', venue: { name: 'Ryde Leisure Centre', city: 'Sydney' }, private: true, settings: { winPoints: 3, lossPoints: 1, currency: 'A$' } },
     { _id: 'c2', name: 'Macquarie Park 夜场', city: 'Sydney', inviteCode: 'MQ4H8D', intro: '', settings: { winPoints: 3, lossPoints: 1, currency: 'A$' } }
   );
   PEOPLE.filter(([id]) => !NON_MEMBERS.includes(id)).forEach(([id]) => st.members.push({ clubId: 'c1', userId: id, role: id === ME ? 'owner' : id === 'wei' ? 'admin' : 'member' }));
+  st.members.forEach((m, i) => (m.joinedAt = now - (720 - i * 47) * DAY));
+  const CERT = { wei: 4.0, chen: 4.5, lin: 3.0, ben: 3.5 };
+  st.members.filter((m) => m.clubId === 'c1' && CERT[m.userId]).forEach((m) => (m.cert = { value: CERT[m.userId], by: ME, at: now - 60 * DAY }));
+  ['chen', 'wei', 'minh'].forEach((id, i) => st.members.push({ clubId: 'c3', userId: id, role: i === 0 ? 'owner' : 'member', joinedAt: now - 300 * DAY }));
   [ME, 'alice', 'ben', 'aiman', 'emily'].forEach((id) => st.members.push({ clubId: 'c2', userId: id, role: id === 'alice' ? 'owner' : 'member' }));
 
-  const now = Date.now();
   const at9 = (ts) => {
     const d = new Date(ts);
     d.setHours(9, 0, 0, 0);
@@ -109,6 +114,21 @@ function seed() {
   up.joinedCount = st.signups.filter((x) => x.eventId === up._id).length;
   const notes = { wei: '#attack', lin: '#casual', alice: '#defend', minh: '#attack', linh: '#late', emily: '#casual' };
   st.signups.filter((x) => x.eventId === up._id && notes[x.userId]).forEach((x) => (x.note = notes[x.userId]));
+  // 积分商城（俱乐部内部）：演示商品
+  st.mall = {
+    c1: [
+      { id: 'i1', key: 'item_balls', icon: 'pickleball', pts: 50, stock: 12 },
+      { id: 'i2', key: 'item_grip', icon: 'paddle', pts: 30, stock: 20 },
+      { id: 'i3', key: 'item_edge', icon: 'paddle', pts: 40, stock: 8 },
+      { id: 'i4', key: 'item_bottle', icon: 'club', pts: 80, stock: 6 },
+      { id: 'i5', key: 'item_tee', icon: 'trophy', pts: 150, stock: 10 },
+      { id: 'i6', key: 'item_paddle', icon: 'paddle', pts: 600, stock: 2 },
+    ],
+  };
+  st.redemptions = [
+    { id: 'r1', clubId: 'c1', userId: 'wei', itemId: 'i2', pts: 30, at: now - 20 * DAY, status: 'done' },
+    { id: 'r2', clubId: 'c1', userId: 'lin', itemId: 'i1', pts: 50, at: now - 5 * DAY, status: 'pending' },
+  ];
   return st;
 }
 
@@ -266,73 +286,247 @@ function viewHome(t) {
         ${c.role !== 'member' ? `<span class="tag">${fmt.role(c.role)}</span>` : ''}</div>`
     )
     .join('')}</div>
+  ${(() => {
+    const others = st.clubs.filter((c) => !memberOf(c._id, ME));
+    return others.length
+      ? `<div class="section-title">${t.otherClubs}</div><div class="card flush">${others
+          .map((c) => `<div class="item" data-act="club" data-id="${c._id}" role="button" tabindex="0"><div class="avatar" style="background:var(--clay)">${esc(c.name[0])}</div><div class="grow"><div class="bold ellipsis">${esc(c.name)}${c.private ? ` <span class="tag gray">🔒 ${t.privateClub}</span>` : ''}</div><div class="muted ellipsis">${esc(c.intro || c.city)}</div></div><span class="arrow">›</span></div>`)
+          .join('')}</div>`
+      : '';
+  })()}
   <div class="btn-row"><button class="btn" data-act="na">${t.createClub}</button><button class="btn ghost" data-act="na">${t.joinByCode}</button></div>`;
+}
+
+// ---------------- 俱乐部：主页 / 动态 / 排行榜 / 我 ----------------
+function clubEvents(id) {
+  return st.events.filter((e) => e.clubId === id).sort((a, b) => b.startTime - a.startTime);
+}
+// 活跃度：每参加一次活动 / 比赛 +10
+function activityScores(id, since, membersOnly) {
+  const ids = new Set(clubEvents(id).filter((e) => e.startTime >= since && e.startTime <= Date.now()).map((e) => e._id));
+  const sc = {};
+  st.signups.filter((x) => ids.has(x.eventId) && x.status === 'joined').forEach((x) => (sc[x.userId] = (sc[x.userId] || 0) + 10));
+  return Object.entries(sc)
+    .filter(([u]) => st.users[u] && (!membersOnly || memberOf(id, u)))
+    .map(([u, v]) => ({ u, v }))
+    .sort((a, b) => b.v - a.v);
+}
+
+// 实力：DUPR 优先，其次俱乐部比赛评分（打满 6 局），最后自评
+function strengthOf(u, clubId) {
+  const pb = u.pbLevel;
+  const m = clubId && memberOf(clubId, u._id);
+  const cert = m && m.cert ? { type: 'cert', value: Number(m.cert.value) } : null;
+  const club = u.doubles.games >= 6 ? { type: 'club', value: u.doubles.rating } : null;
+  const dupr = pb && pb.type === 'dupr' ? { type: 'dupr', value: Number(pb.value) } : null;
+  const self = pb && pb.type === 'self' ? { type: 'self', value: Number(pb.value) } : null;
+  return { main: cert || dupr || club || self, all: [cert, dupr, club, self].filter(Boolean) };
+}
+function strengthTag(t, x) {
+  const label = { cert: t.tagCert, dupr: 'DUPR', club: t.tagClubRating, self: t.pbSelf }[x.type];
+  const digits = x.type === 'self' || x.type === 'cert' ? 1 : 3;
+  return `<span class="num bold">${x.value.toFixed(digits)}</span><span class="tag ${x.type === 'cert' ? 'cert' : x.type === 'dupr' ? '' : x.type === 'club' ? 'clay' : 'gray'}">${label}</span>`;
+}
+
+function clubHome(t, c, role, admin) {
+  const hidden = c.private && !role;
+  const mem = st.members.filter((m) => m.clubId === c._id).map((m) => st.users[m.userId]).filter(Boolean);
+  const evs = clubEvents(c._id);
+  const comps = evs.filter((e) => st.matches.some((m) => m.eventId === e._id));
+  const active = activityScores(c._id, 0, false).reduce((x, y) => x + y.v, 0);
+  const owner = st.users[(st.members.find((m) => m.clubId === c._id && m.role === 'owner') || {}).userId];
+  const men = mem.filter((u) => u.gender !== 'f').length;
+  const v = c.venue;
+  const map = v ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent([v.name, v.city].filter(Boolean).join(' ')) : '';
+  const stat = (label, val, act) => `<button class="stat" ${act ? `data-act="${act}"` : 'disabled'}><span class="muted">${label}</span><b class="num">${val}</b></button>`;
+  return `
+  <div class="card info-card">
+    <div class="row between"><div class="bold ev-title">${esc(c.name)}${c.private ? ` <span class="tag gray">🔒 ${t.privateClub}</span>` : ''}</div><button class="qr-btn" data-act="clubQr" aria-label="${t.linkQr}">${QR_ICON}</button></div>
+    ${v ? `<a class="irow" href="${map}" target="_blank" rel="noopener"><span class="ii">📍</span><span class="grow">${esc(f(t.venueLine, v.name))}</span><span class="arrow">›</span></a>` : ''}
+    ${c.intro ? `<div class="irow"><span class="ii">ℹ️</span><span class="grow">${esc(f(t.introLine, c.intro))}</span></div>` : ''}
+    <div class="divider-h"></div>
+    <div class="stats4">
+      ${stat(t.statMembers, hidden ? f(t.unitPeople, '**') : f(t.unitPeople, mem.length), hidden ? '' : 'clubMembers')}
+      ${stat(t.statSessions, hidden ? f(t.unitTimes, '**') : f(t.unitTimes, evs.length), hidden ? '' : 'clubSessions')}
+      ${stat(t.statGames, hidden ? f(t.unitTimes, '**') : f(t.unitTimes, comps.length), hidden ? '' : 'clubComps')}
+      ${stat(t.statActive, hidden ? '***' : active, '')}
+    </div>
+    ${hidden ? `<div class="muted center" style="margin-top:8px">🔒 ${t.privateNote}</div>` : ''}
+  </div>
+  ${hidden ? '' : `
+  <div class="card" data-act="clubMembers" role="button" tabindex="0" style="cursor:pointer">
+    <div class="row between"><div class="bold">${esc(f(t.genderCount, men, mem.length - men))}</div><span class="arrow">›</span></div>
+    <div class="faces-row big">${mem.slice(0, 10).map((u) => avatar(u)).join('')}</div>
+  </div>`}
+  ${owner ? `<div class="card item" data-act="player" data-id="${owner._id}" role="button" tabindex="0" style="padding:12px 16px">${avatar(owner)}<span class="grow">${esc(owner.nickName)}<span class="muted">（${fmt.role('owner')}）</span></span><span class="arrow">›</span></div>` : ''}
+  ${admin ? `<button class="btn" data-act="newEventNa">${t.newEvent}</button>` : ''}`;
+}
+
+function clubFeed(t, c) {
+  const evs = clubEvents(c._id);
+  const comps = evs.filter((e) => st.matches.some((m) => m.eventId === e._id));
+  const recent = evs.slice(0, 6);
+  return `${
+    recent.length
+      ? recent
+          .map((e) => {
+            const by = st.users[e.creatorId] || st.users[ME];
+            return `<div class="feed-row"><div class="feed-who" data-act="player" data-id="${by._id}" role="button" tabindex="0">${avatar(by, 'sm')}<span class="ellipsis">${esc(by.nickName)}</span></div><div class="grow">${eventCard(t, e)}</div></div>`;
+          })
+          .join('')
+      : `<div class="card empty">${t.feed_empty}</div>`
+  }
+  <div class="row between" style="padding:0 4px"><button class="link" data-act="clubSessions">${f(t.historySessions, evs.length)}</button><button class="link" data-act="clubComps">${f(t.historyComps, comps.length)}</button></div>`;
+}
+
+function clubRank(t, c) {
+  const kind = ui.rankKind || 'active';
+  const since = { week: Date.now() - 7 * DAY, month: Date.now() - 30 * DAY, q: Date.now() - 90 * DAY, half: Date.now() - 180 * DAY, all: 0 }[ui.period] || 0;
+  const only = ui.membersOnly;
+  const type = ui.rankType || 'all';
+  const tabs = `<div class="chips">${['active', 'points', 'pairs', 'rating', 'joined'].map((k) => `<button class="${kind === k ? 'on' : ''}" data-act="rankKind" data-k="${k}">${t['rk_' + k]}</button>`).join('')}</div>`;
+  const periods = ['week', 'month', 'q', 'half', 'all'].map((p) => `<button class="${ui.period === p ? 'on' : ''}" data-act="period" data-p="${p}">${t[{ week: 'last7', month: 'last30', q: 'last90', half: 'last180', all: 'allTime' }[p]]}</button>`).join('');
+  const types = ['all', 'doubles', 'singles'].map((k) => `<button class="${type === k ? 'on' : ''}" data-act="rankType" data-k="${k}">${k === 'all' ? t.typeAll : t[k]}</button>`).join('');
+  const onlyBtn = `<button class="${only ? 'on' : ''}" data-act="toggleMembersOnly">👤 ${t.membersOnly}</button>`;
+  const filters =
+    kind === 'joined'
+      ? `<div class="rank-filters"><button class="on" data-act="toggleJoinOrder">${ui.newFirst ? t.newFirst : t.oldFirst} ⇅</button></div>`
+      : kind === 'rating'
+      ? ''
+      : `<div class="rank-filters">${onlyBtn}${periods}</div>${kind === 'points' || kind === 'pairs' ? `<div class="rank-filters">${types}</div>` : ''}`;
+  const medal = (i) => `<span class="rank ${i < 3 ? 'top' : ''}">${i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}</span>`;
+  const who = (u, extra = '') => `${avatar(u, 'sm')}<span class="grow ellipsis">${esc(u.nickName)} ${u.gender === 'f' ? '<span class="sex f">♀</span>' : '<span class="sex m">♂</span>'}${extra}<div class="muted" style="font-size:11px">${esc(i18n.levelTitle(u.doubles))}</div></span>`;
+  const keep = (u) => st.users[u] && (!only || memberOf(c._id, u));
+  const games = st.matches.filter((m) => m.clubId === c._id && m.status === 'done' && m.playedAt >= since && (type === 'all' || m.type === type));
+  const head3 = `<div class="tr th"><span class="rank">#</span><span class="name">${t.colPlayer}</span><span class="c">${t.colPoints}</span><span class="c">${t.colDiff}</span><span class="c">${t.colWinRate}</span></div>`;
+  const sign = (n) => (n > 0 ? '+' : '') + n;
+  let rows = [];
+  let note = '';
+  let head = '';
+  if (kind === 'active') {
+    rows = activityScores(c._id, since, only).map(({ u, v }, i) => `<div class="tr" data-act="player" data-id="${u}" role="button" tabindex="0">${medal(i)}<span class="name row" style="gap:8px">${who(st.users[u])}</span><span class="c w bold num">${i < 5 ? '🔥 ' : ''}${v}</span></div>`);
+    note = t.activeRule;
+  } else if (kind === 'points') {
+    head = head3;
+    rows = aggregate(games, c.settings)
+      .filter((r) => keep(r.userId))
+      .map((r, i) => `<div class="tr" data-act="player" data-id="${r.userId}" role="button" tabindex="0">${medal(i)}<span class="name row" style="gap:8px">${who(st.users[r.userId])}</span><span class="c bold">${r.score}</span><span class="c ${r.diff > 0 ? 'up' : r.diff < 0 ? 'down' : ''}">${sign(r.diff)}</span><span class="c">${Math.round(r.winRate)}%</span></div>`);
+    note = f(t.boardRule, c.settings.winPoints, c.settings.lossPoints);
+  } else if (kind === 'pairs') {
+    head = head3;
+    const pairs = new Map();
+    games.filter((m) => m.type === 'doubles').forEach((m) => {
+      [[m.teamA, m.scoreA, m.scoreB], [m.teamB, m.scoreB, m.scoreA]].forEach(([team, own, opp]) => {
+        if (!team.every(keep)) return;
+        const k = team.slice().sort().join('|');
+        const g = pairs.get(k) || { team: team.slice().sort(), w: 0, l: 0, diff: 0 };
+        own > opp ? g.w++ : g.l++;
+        g.diff += own - opp;
+        pairs.set(k, g);
+      });
+    });
+    rows = [...pairs.values()]
+      .filter((g) => g.w + g.l >= 3)
+      .map((g) => ({ ...g, pts: g.w * c.settings.winPoints + g.l * c.settings.lossPoints, rate: g.w / (g.w + g.l) }))
+      .sort((a, b) => b.pts - a.pts || b.rate - a.rate || b.diff - a.diff)
+      .slice(0, 30)
+      .map((g, i) => `<div class="tr" style="cursor:default">${medal(i)}<span class="name pair-col">${g.team.map((u) => `<span class="row" style="gap:6px" data-act="player" data-id="${u}">${who(st.users[u])}</span>`).join('')}</span><span class="c bold">${g.pts}</span><span class="c ${g.diff > 0 ? 'up' : g.diff < 0 ? 'down' : ''}">${sign(g.diff)}</span><span class="c">${Math.round(g.rate * 100)}%</span></div>`);
+    note = f(t.pairMin, 3);
+  } else if (kind === 'rating') {
+    rows = st.members
+      .filter((m) => m.clubId === c._id)
+      .map((m) => st.users[m.userId])
+      .filter(Boolean)
+      .map((u) => ({ u, s: strengthOf(u, c._id) }))
+      .sort((a, b) => (b.s.main ? b.s.main.value : -1) - (a.s.main ? a.s.main.value : -1))
+      .map(({ u, s: x }, i) => {
+        const others = x.all.filter((y) => y !== x.main).map((y) => `${{ cert: t.tagCert, dupr: 'DUPR', club: t.tagClubRating, self: t.pbSelf }[y.type]} ${y.value.toFixed(y.type === 'self' || y.type === 'cert' ? 1 : 3)}`);
+        return `<div class="tr" data-act="player" data-id="${u._id}" role="button" tabindex="0">${medal(i)}<span class="name row" style="gap:8px">${who(u)}</span>
+          <span class="strength">${x.main ? strengthTag(t, x.main) : `<span class="muted">${t.notRated}</span>`}${others.length ? `<span class="muted others">${esc(others.join(' · '))}</span>` : ''}</span></div>`;
+      });
+    note = t.strengthNote;
+  } else {
+    const roleTag = (r) => (r === 'member' ? '' : ` <span class="tag">${fmt.role(r)}</span>`);
+    rows = st.members
+      .filter((m) => m.clubId === c._id && st.users[m.userId])
+      .sort((a, b) => (ui.newFirst ? (b.joinedAt || 0) - (a.joinedAt || 0) : (a.joinedAt || 0) - (b.joinedAt || 0)))
+      .map((m, i) => `<div class="tr" data-act="player" data-id="${m.userId}" role="button" tabindex="0">${medal(i)}<span class="name row" style="gap:8px">${who(st.users[m.userId], roleTag(m.role))}</span><span class="c w muted num">${m.joinedAt ? fmt.date(m.joinedAt).replace(/-/g, '/') : ''}</span></div>`);
+  }
+  return `${tabs}${filters}<div class="card">${rows.length ? `<div class="table">${head}${rows.join('')}</div>` : `<div class="empty">${t.noBoard}</div>`}${note ? `<div class="muted" style="margin-top:10px">${esc(note)}</div>` : ''}</div>`;
+}
+
+function clubMe(t, c, role) {
+  if (!role) return `<div class="card empty"><div style="font-size:40px">${ICONS.club}</div><div>${t.notMemberYet}</div><button class="link" data-act="applyJoin">${c.applied ? t.applyPending : t.wantJoin}</button></div>`;
+  const m = st.members.find((x) => x.clubId === c._id && x.userId === ME);
+  const evIds = new Set(clubEvents(c._id).map((e) => e._id));
+  const sessions = st.signups.filter((x) => evIds.has(x.eventId) && x.userId === ME && x.status === 'joined').length;
+  const games = st.matches.filter((g) => evIds.has(g.eventId) && g.status === 'done' && g.players.includes(ME));
+  const wins = games.filter((g) => (g.teamA.includes(ME) ? g.scoreA > g.scoreB : g.scoreB > g.scoreA)).length;
+  const act = activityScores(c._id, 0, false);
+  const idx = act.findIndex((x) => x.u === ME);
+  return `${playerHeader(t, ME)}
+  <div class="card">
+    <div class="irow"><span class="ii">🏷️</span><span class="grow">${t.myClubRole}：${fmt.role(role)}${m && m.joinedAt ? ` · ${esc(f(t.joinedOn, fmt.date(m.joinedAt)))}` : ''}</span></div>
+    <div class="irow"><span class="ii">📊</span><span class="grow">${esc(f(t.myClubStats, sessions, games.length, games.length ? Math.round((wins / games.length) * 100) : 0))}</span></div>
+    ${idx >= 0 ? `<div class="irow"><span class="ii">🔥</span><span class="grow">${esc(f(t.myActiveRank, act[idx].v, idx + 1))}</span></div>` : ''}
+    <div class="irow" data-act="openMall" role="button" tabindex="0" style="cursor:pointer"><span class="ii">🎁</span><span class="grow">${t.mall}：<b class="num" style="color:var(--clay)">${mallPoints(c._id, ME).left}</b> ${t.mallBalance}</span><span class="arrow">›</span></div>
+    <div class="irow"><span class="ii">✅</span><span class="grow">${t.certifiedLevel}：${m && m.cert ? `<b class="num">${Number(m.cert.value).toFixed(1)}</b> <span class="tag cert">${t.tagCert}</span>` : `<span class="muted">${t.notRated}</span>`}</span></div>
+  </div>`;
 }
 
 function viewClub(t, id) {
   const c = clubOf(id);
   const role = (memberOf(id, ME) || {}).role;
   const admin = isAdmin(id);
-  const members = st.members
-    .filter((m) => m.clubId === id)
-    .map((m) => ({ ...st.users[m.userId], role: m.role }))
-    .sort((a, b) => ({ owner: 0, admin: 1, member: 2 })[a.role] - ({ owner: 0, admin: 1, member: 2 })[b.role] || b.doubles.rating - a.doubles.rating);
-  let body = '';
-  if (ui.clubTab === 'events') {
-    const evs = st.events.filter((e) => e.clubId === id).sort((a, b) => b.startTime - a.startTime);
-    body = `${admin ? `<button class="btn" data-act="na">${t.newEvent}</button>` : ''}
-    <div class="card flush">${
-      evs.length
-        ? evs
-            .map(
-              (e) => `<div class="item" data-act="event" data-id="${e._id}" role="button" tabindex="0"><div class="grow">
-          <div class="ellipsis"><span class="bold">${esc(e.title)}</span><span class="tag ${e.status === 'playing' ? 'clay' : e.status === 'finished' ? 'gray' : ''}">${fmt.status(e.status)}</span></div>
-          <div class="muted">${fmt.range(e.startTime, e.endTime)}</div></div><div class="muted num">${joinedOf(e._id).length}/${e.capacity}</div></div>`
-            )
-            .join('')
-        : `<div class="empty">${t.noClubEvents}</div>`
-    }</div>`;
-  } else if (ui.clubTab === 'board') {
-    const since = { week: Date.now() - 7 * DAY, month: Date.now() - 30 * DAY, all: 0 }[ui.period];
-    const rows = aggregate(st.matches.filter((m) => m.clubId === id && m.playedAt >= since), c.settings);
-    body = `<div class="tabs small">${['week', 'month', 'all']
-      .map((p) => `<button class="${ui.period === p ? 'on' : ''}" data-act="period" data-p="${p}">${t[{ week: 'last7', month: 'last30', all: 'allTime' }[p]]}</button>`)
-      .join('')}</div>
-    <div class="card">${
-      rows.length
-        ? `<div class="table"><div class="tr th"><span class="rank">#</span><span class="name">${t.colPlayer}</span><span class="c">${t.colWL}</span><span class="c">${t.colWinRate}</span><span class="c">${t.colDiff}</span><span class="c">${t.colPoints}</span></div>
-        ${rows
-          .map(
-            (r) => `<div class="tr" data-act="player" data-id="${r.userId}" role="button" tabindex="0"><span class="rank ${r.rank <= 3 ? 'top' : ''}">${r.rank}</span><span class="name">${esc(st.users[r.userId].nickName)}</span>
-          <span class="c">${r.wins}-${r.losses}</span><span class="c">${Math.round(r.winRate)}%</span><span class="c ${r.diff > 0 ? 'up' : r.diff < 0 ? 'down' : ''}">${r.diff > 0 ? '+' : ''}${r.diff}</span><span class="c bold">${r.score}</span></div>`
-          )
-          .join('')}</div>`
-        : `<div class="empty">${t.noBoard}</div>`
-    }<div class="muted" style="margin-top:10px">${esc(f(t.boardRule, c.settings.winPoints, c.settings.lossPoints))}</div></div>`;
-  } else {
-    body = `${admin ? `<button class="btn ghost" data-act="na">${t.addGuestBtn}</button>` : ''}
-    <div class="card flush">${members
-      .map(
-        (m) => `<div class="item" data-act="player" data-id="${m._id}" role="button" tabindex="0">${avatar(m)}
-        <div class="grow"><div class="ellipsis"><span class="bold">${esc(m.nickName)}</span>${m.role !== 'member' ? `<span class="tag">${fmt.role(m.role)}</span>` : ''}${m.guest ? `<span class="tag gray">${t.guest}</span>` : ''}</div>
-        <div class="muted">${esc(f(t.memberWL, m.doubles.wins, m.doubles.losses))}</div></div>
-        <div class="center"><div class="bold num" style="color:var(--accent)">${fmt.ratingLabel(m.doubles)}</div><div class="muted">${t.doublesRating}</div></div></div>`
-      )
-      .join('')}</div>`;
-  }
-  return `
-  <div class="card"><div class="row"><div class="avatar lg" style="background:var(--btn)">${esc(c.name[0])}</div>
-    <div class="grow"><div class="bold" style="font-size:18px">${esc(c.name)}</div><div class="muted">${esc(c.city)} · ${f(t.membersN, members.length)}</div></div>
-    ${role !== 'member' ? `<span class="tag">${fmt.role(role)}</span>` : ''}</div>
-    ${c.intro ? `<div class="p">${esc(c.intro)}</div>` : ''}
-    <div class="row between" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
-      <span class="muted">${t.inviteCode} <b style="color:var(--accent);letter-spacing:2px">${c.inviteCode}</b></span>
-      <button class="btn ghost mini" data-act="na">${t.shareInvite}</button></div>
-    ${admin ? `<button class="erow" data-act="openPaySettings" style="margin-top:8px"><span class="ek">💳 ${t.clubPaySettings}</span><span class="ev">${c.fxRate ? `1 A$ = ¥${c.fxRate}` : esc(c.payId || '')}</span><span class="arrow">›</span></button>` : ''}</div>
-  <div class="tabs">${['events', 'board', 'members']
-    .map((k) => `<button class="${ui.clubTab === k ? 'on' : ''}" data-act="clubTab" data-k="${k}">${t[{ events: 'tabEvents', board: 'tabBoard', members: 'tabMembers' }[k]]}</button>`)
-    .join('')}</div>
-  ${body}`;
+  const tab = c.private && !role && ui.clubTab !== 'me' ? 'home' : ui.clubTab || 'home';
+  const tabs = `<div class="tabs line">${[['home', t.clubTabHome], ['feed', t.clubTabFeed], ['rank', t.clubTabRank], ['me', t.tabMe]]
+    .map(([k, label]) => `<button class="${tab === k ? 'on' : ''}" data-act="clubTab" data-k="${k}">${label}</button>`)
+    .join('')}</div>`;
+  const body = tab === 'feed' ? clubFeed(t, c) : tab === 'rank' ? clubRank(t, c) : tab === 'me' ? clubMe(t, c, role) : clubHome(t, c, role, admin);
+  return tabs + body;
+}
+
+// 俱乐部底部操作栏：入会申请 / 邀请球友 / 认证等级 + 设置、二维码、会员管理、VIP 会费
+function clubActionBar(t, id) {
+  const role = (memberOf(id, ME) || {}).role;
+  const admin = isAdmin(id);
+  if (!role) return `<div class="actionbar club-bar"><button class="pill go" data-act="applyJoin" ${clubOf(id).applied ? 'disabled' : ''}>${clubOf(id).applied ? t.applyPending : t.applyJoin}</button></div>`;
+  return `<div class="actionbar club-bar">
+    <div class="btn-row">
+      ${role ? '' : `<button class="pill go" data-act="na">${t.btnJoinApply}</button>`}
+      <button class="pill share" data-act="clubQr">${t.btnInviteFriends}</button>
+      ${admin ? `<button class="pill blue" data-act="clubMembers">${t.btnCertify}</button>` : ''}
+    </div>
+    <div class="club-links">
+      ${(memberOf(id, ME) || {}).role === 'owner' ? `<button class="link" data-act="openPaySettings">${t.linkSettings}</button>` : ''}
+      <button class="link" data-act="openMall">🎁 ${t.mall}</button>
+      <button class="link" data-act="clubQr">${t.linkQr}</button>
+      <button class="link" data-act="clubMembers">${t.linkMembers}</button>
+      <button class="link muted" data-act="vipTbd">${t.linkVip}</button>
+    </div>
+  </div>`;
+}
+
+// 会员名单（会员管理）
+function viewClubMembers(t, id) {
+  const canManage = isAdmin(id);
+  const order = { owner: 0, admin: 1, member: 2 };
+  const list = st.members
+    .filter((m) => m.clubId === id && st.users[m.userId])
+    .map((m) => ({ ...st.users[m.userId], role: m.role, joinedAt: m.joinedAt }))
+    .sort((a, b) => order[a.role] - order[b.role] || b.doubles.rating - a.doubles.rating);
+  return `<div class="card flush">${list
+    .map((u) => `<div class="item" data-act="player" data-id="${u._id}" role="button" tabindex="0">${avatar(u)}
+      <div class="grow"><div class="ellipsis"><span class="bold">${esc(u.nickName)}</span> ${u.gender === 'm' ? '<span class="sex m">♂</span>' : u.gender === 'f' ? '<span class="sex f">♀</span>' : ''}${u.role !== 'member' ? `<span class="tag">${fmt.role(u.role)}</span>` : ''}${u.guest ? `<span class="tag gray">${t.guest}</span>` : ''}</div>
+      <div class="muted num">${u.joinedAt ? esc(f(t.joinedOn, fmt.date(u.joinedAt))) : ''}</div></div>
+      <div class="pb">${levelBadge(t, u, id)}</div>${canManage ? `<button class="link" data-act="memberOps" data-id="${u._id}">${t.operate}</button>` : ''}</div>`)
+    .join('')}</div>`;
+}
+
+// 俱乐部名下的活动 / 比赛列表
+function viewClubEvents(t, id, comps) {
+  const evs = clubEvents(id).filter((e) => !comps || st.matches.some((m) => m.eventId === e._id));
+  return evs.length ? evs.map((e) => eventCard(t, e)).join('') : `<div class="card empty">${t.noClubEvents}</div>`;
 }
 
 // 活动地点：跟随俱乐部的常用场地（可另写场地号）；点击用地图打开
@@ -526,6 +720,10 @@ function matchCard(t, m, admin) {
     </div></div>`;
 }
 
+function rulesRow(t) {
+  return `<div class="card mlist"><button class="li" data-act="rules"><span class="li-ic">${ICONS.rules}</span><span class="grow">${t.r_nav}</span><span class="arrow">›</span></button></div>`;
+}
+
 function viewProfile(t, uid) {
   const u = st.users[uid];
   const self = uid === ME;
@@ -554,6 +752,7 @@ function viewProfile(t, uid) {
     <div class="bar"><div style="width:${rel}%"></div></div>
     ${hist.length >= 2 ? chart(hist) : `<div class="empty">${t.chartEmpty}</div>`}
   </div>
+  ${rulesRow(t)}
   <div class="section-title">${t.recentGames}</div>
   <div class="card flush">${
     recent.length
@@ -649,7 +848,7 @@ function viewMe(t) {
     ${cell('formats', ICONS.formats, 'ball', t.menu_formats, 'data-mode="rotation"')}
     ${cell('guide', ICONS.guide, 'ball', t.menu_guide, 'data-topic="start"')}
     ${cell('tab', ICONS.club, 'ball', t.myClubs, 'data-tab="home"')}
-    ${cell('rules', ICONS.rules, 'ball', t.rulesLink)}
+    ${cell('shopHub', ICONS.shop, 'ball', t.mall)}
     ${cell('na', ICONS.contact, 'ball', t.menu_contact)}
   </div>
   <div class="card mlist">
@@ -809,6 +1008,13 @@ function recordMatches(kind) {
 }
 
 
+// 俱乐部内的等级：有认证显示认证，否则显示本人填写的匹克球等级
+function levelBadge(t, u, clubId) {
+  const m = clubId && memberOf(clubId, u._id);
+  if (m && m.cert) return `<span class="num bold">${Number(m.cert.value).toFixed(1)}</span><span class="tag cert">${t.tagCert}</span>`;
+  return pbBadge(t, u);
+}
+
 // 匹克球等级显示：3.5 自评 / 3.812 DUPR / 未自评
 function pbBadge(t, u) {
   const pb = u.pbLevel;
@@ -858,7 +1064,7 @@ function viewPlayers(t, eid) {
             <div class="av-wrap">${avatar(u)}${u._id === ME ? `<span class="me-badge">${t.meBadge}</span>` : ''}</div>
             <div class="grow"><div class="ellipsis">${f(t.numberN, i + 1)}${i18n.getLang() === 'zh' ? '，' : ' · '}${displayName(t, eventOf(eid), x)}${!x.broughtBy && !memberOf(eventOf(eid).clubId, u._id) ? ` <span class="tag gray">${t.nonMember}</span>` : ''} ${u.gender === 'm' ? '<span class="sex m">♂</span>' : u.gender === 'f' ? '<span class="sex f">♀</span>' : ''}</div>
             <div class="muted num">${time}${x.note ? ` <span class="note-chip">${esc(noteText(t, x.note))}</span>` : ''}</div></div>
-            <div class="pb">${pbBadge(t, u)}</div></div>`;
+            <div class="pb">${levelBadge(t, u, eventOf(eid).clubId)}</div></div>`;
           })
           .join('')
       : `<div class="empty">${t.listEmpty}</div>`
@@ -1113,6 +1319,88 @@ function viewInvites(t) {
   }</div>`;
 }
 
+
+// ---------------- 积分商城（俱乐部内部） ----------------
+// 积分 = 本俱乐部已完赛对局按积分规则累计（胜 / 负各得几分），兑换后扣除；排行榜不受影响
+function mallPoints(clubId, uid) {
+  const c = clubOf(clubId);
+  const r = aggregate(st.matches.filter((m) => m.clubId === clubId && m.status === 'done'), c.settings).find((x) => x.userId === uid);
+  const earned = r ? r.score : 0;
+  const spent = (st.redemptions || []).filter((x) => x.clubId === clubId && x.userId === uid).reduce((a, b) => a + b.pts, 0);
+  return { earned, spent, left: earned - spent };
+}
+const itemName = (t, it) => (it.key ? t[it.key] : it.name);
+
+function viewMall(t, clubId) {
+  const c = clubOf(clubId);
+  const admin = isAdmin(clubId);
+  const owner = (memberOf(clubId, ME) || {}).role === 'owner';
+  const tab = ui.mallTab || 'shop';
+  const tabs = `<div class="tabs line">${[['shop', t.mallTabShop], ['mine', t.myRedemptions], ...(admin ? [['admin', t.mallAdmin]] : [])]
+    .map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="mallTab" data-k="${k}">${l}</button>`)
+    .join('')}</div>`;
+  const items = (st.mall && st.mall[clubId]) || [];
+  const p = mallPoints(clubId, ME);
+  const recRow = (r, manage) => {
+    const it = items.find((x) => x.id === r.itemId) || {};
+    const u = st.users[r.userId];
+    return `<div class="item" style="cursor:default"><span class="mall-ic sm">${ICONS[it.icon] || ''}</span>
+      <div class="grow"><div class="ellipsis">${esc(itemName(t, it))}${manage && u ? ` · ${esc(u.nickName)}` : ''}</div><div class="muted num">${fmt.shortDate(r.at)} · ${f(t.ptsUnit, r.pts)}</div></div>
+      ${manage && r.status === 'pending' ? `<button class="btn mini" data-act="markGiven" data-id="${r.id}">${t.markGiven}</button>` : `<span class="pay ${r.status === 'done' ? 'paid' : 'claimed'}">${t['rd_' + r.status]}</span>`}</div>`;
+  };
+  if (tab === 'mine' || tab === 'admin') {
+    const list = (st.redemptions || []).filter((r) => r.clubId === clubId && (tab === 'admin' || r.userId === ME)).sort((a, b) => (a.status === 'pending') === (b.status === 'pending') ? b.at - a.at : a.status === 'pending' ? -1 : 1);
+    return `${tabs}<div class="card flush">${list.length ? list.map((r) => recRow(r, tab === 'admin')).join('') : `<div class="empty">${t.noRedemptions}</div>`}</div>`;
+  }
+  return `${tabs}
+  <div class="card mall-head"><div class="muted">${t.mallBalance}</div><div class="rating-big num" style="color:var(--clay)">${p.left}</div>
+    <div class="muted num">${esc(f(t.mallEarned, p.earned, p.spent))}</div><div class="muted" style="margin-top:6px">${esc(f(t.mallRule, c.settings.winPoints, c.settings.lossPoints))}</div></div>
+  <div class="mall-grid">${items
+    .map((it) => {
+      const can = it.stock > 0 && p.left >= it.pts;
+      return `<div class="card mall-item"><span class="mall-ic">${ICONS[it.icon] || ''}</span><div class="bold ellipsis">${esc(itemName(t, it))}</div>
+        <div class="num" style="color:var(--clay);font-weight:700">${f(t.ptsUnit, it.pts)}</div><div class="muted">${it.stock > 0 ? f(t.stockN, it.stock) : t.outOfStock}</div>
+        <button class="btn mini" data-act="redeemAsk" data-id="${it.id}" ${can ? '' : 'disabled'}>${it.stock <= 0 ? t.outOfStock : p.left < it.pts ? t.notEnoughPts : t.redeem}</button>
+        ${owner ? `<button class="link" data-act="restock" data-id="${it.id}">${t.stockPlus}</button>` : ''}</div>`;
+    })
+    .join('')}</div>`;
+}
+
+
+// ---------------- 积分商城总入口：总积分商城（道具卡）+ 俱乐部商城 ----------------
+// 活跃积分：每参加一次活动 / 比赛 +10（所有俱乐部合计），扣掉在总积分商城的兑换
+const CARD_PRICE = 50;
+function activityPoints(uid) {
+  const earned = st.signups.filter((x) => x.userId === uid && x.status === 'joined' && (eventOf(x.eventId) || {}).startTime <= Date.now()).length * 10;
+  const spent = (st.cardRedemptions || []).filter((r) => r.userId === uid).reduce((a, b) => a + b.pts, 0);
+  return { earned, spent, left: earned - spent };
+}
+
+function viewShopHub(t) {
+  const tab = ui.hubTab || 'platform';
+  const tabs = `<div class="tabs line">${[['platform', t.platformShop], ['clubs', t.clubShop]].map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="hubTab" data-k="${k}">${l}</button>`).join('')}</div>`;
+  if (tab === 'clubs') {
+    const mine = st.members.filter((m) => m.userId === ME).map((m) => clubOf(m.clubId));
+    return `${tabs}<div class="muted" style="padding:0 4px">${t.clubPtsRule}</div>
+    <div class="card flush">${mine
+      .map((c) => `<div class="item" data-act="openMallOf" data-id="${c._id}" role="button" tabindex="0"><div class="avatar" style="background:var(--btn)">${esc(c.name[0])}</div>
+        <div class="grow"><div class="bold ellipsis">${esc(c.name)}</div><div class="muted">${esc(f(t.myClubPts, mallPoints(c._id, ME).left))}</div></div><span class="arrow">›</span></div>`)
+      .join('')}</div>`;
+  }
+  const p = activityPoints(ME);
+  const credits = st.users[ME].changeCredits || {};
+  const cards = [['nickName', '✏️'], ['avatar', '🖼️'], ['pbLevel', '🏅']];
+  return `${tabs}
+  <div class="card mall-head"><div class="muted">${t.activityPts}</div><div class="rating-big num" style="color:var(--clay)">${p.left}</div>
+    <div class="muted num">${esc(f(t.mallEarned, p.earned, p.spent))}</div><div class="muted" style="margin-top:6px">${t.activityPtsRule}</div></div>
+  ${cards
+    .map(([k, ic]) => `<div class="card row" style="gap:12px"><span class="card-ic">${ic}</span>
+      <div class="grow"><div class="bold">${t['card_' + k]}</div><div class="muted">${t['card_' + k + '_d']}</div>
+      <div class="num" style="color:var(--clay);font-weight:700">${f(t.ptsUnit, CARD_PRICE)} <span class="muted" style="font-weight:400">· ${f(t.owned, credits[k] || 0)}</span></div></div>
+      <button class="btn mini" data-act="buyCard" data-k="${k}" ${p.left >= CARD_PRICE ? '' : 'disabled'}>${p.left >= CARD_PRICE ? t.redeem : t.notEnoughPts}</button></div>`)
+    .join('')}`;
+}
+
 // ---------------- 弹层 ----------------
 function sheetHtml(t) {
   const s = ui.sheet;
@@ -1124,6 +1412,43 @@ function sheetHtml(t) {
       <input id="noteInput" class="note-input" maxlength="10" placeholder="${t.notePh}" value="${esc(s.text)}" data-input="note">
       <div class="note-tags">${NOTE_TAGS.map((k) => `<button class="${s.text === t['tag_' + k] ? 'on' : ''}" data-act="pickNote" data-k="${k}">${t['tag_' + k]}</button>`).join('')}</div>
       <div class="btn-row"><button class="btn" data-act="saveNote">${t.addNote}</button><button class="btn ghost" data-act="closeSheet">${t.close}</button></div>
+    </div></div>`;
+  }
+  if (s.kind === 'redeem') {
+    const it = st.mall[s.clubId].find((x) => x.id === s.itemId);
+    return `<div class="mask center-mask" data-act="closeSheet"><div class="dialog" data-stop="1">
+      <span class="mall-ic" style="align-self:center">${ICONS[it.icon] || ''}</span>
+      <div class="bold center">${esc(f(t.redeemConfirm, it.pts, itemName(t, it)))}</div>
+      <div class="btn-row"><button class="btn ghost" data-act="closeSheet">${t.cancel}</button><button class="btn" data-act="redeemDo">${t.redeem}</button></div>
+    </div></div>`;
+  }
+  if (s.kind === 'memberOps') {
+    const c = clubOf(s.clubId);
+    const m = memberOf(c._id, s.userId);
+    const myRole = (memberOf(c._id, ME) || {}).role;
+    const u = st.users[s.userId];
+    const ops = [['certOpen', t.btnCertify]];
+    if (myRole === 'owner' && m.role !== 'owner') ops.push(m.role === 'admin' ? ['setMember', t.removeAdmin] : ['setAdmin', t.makeAdmin]);
+    if (m.role !== 'owner' && u._id !== ME && (m.role !== 'admin' || myRole === 'owner')) ops.push(['kick', t.removeFromClub]);
+    if (myRole === 'owner' && m.role !== 'owner' && !u.guest) ops.push(['transfer', t.transferOwner]);
+    return `<div class="mask" data-act="closeSheet"><div class="sheet" data-stop="1">
+      <h3>${esc(u.nickName)}</h3>
+      ${ops.map(([k, l]) => `<button class="mode center ${k === 'kick' ? 'danger' : ''}" data-act="memberOp" data-k="${k}">${l}</button>`).join('')}
+      <button class="btn ghost" data-act="closeSheet">${t.cancel}</button>
+    </div></div>`;
+  }
+  if (s.kind === 'cert') {
+    const u = st.users[s.userId];
+    const m = memberOf(s.clubId, s.userId);
+    const LV = [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5];
+    return `<div class="mask center-mask" data-act="closeSheet"><div class="dialog" data-stop="1">
+      <button class="x" data-act="closeSheet" aria-label="${t.close}">×</button>
+      <div class="bold center">${esc(f(t.certTitle, u.nickName))}</div>
+      <div class="muted center">${t.pbLevel}: ${pbBadge(t, u)}</div>
+      <div class="lv-grid">${LV.map((l) => `<button class="${m.cert && m.cert.value === l ? 'on' : ''}" data-act="certPick" data-l="${l}">${l.toFixed(1)}${l === 5.5 ? '+' : ''}</button>`).join('')}</div>
+      <div class="muted">${t.certNote}</div>
+      ${m.cert ? `<button class="link" data-act="certClear">${t.certClear}</button>` : ''}
+      <button class="link center" data-act="levels">${t.levelGuideLink}</button>
     </div></div>`;
   }
   if (s.kind === 'bill') {
@@ -1189,8 +1514,9 @@ function sheetHtml(t) {
   if (s.kind === 'qr') {
     return `<div class="mask center-mask" data-act="closeSheet"><div class="dialog" data-stop="1">
       <button class="x" data-act="closeSheet" aria-label="${t.cancel}">×</button>
-      <div class="bold center">${t.qrTitle}</div>
+      <div class="bold center">${esc(s.title || t.qrTitle)}</div>
       <div id="qrbox" class="qrbox"></div>
+      ${s.note ? `<div class="center bold num">${esc(s.note)}</div>` : ''}
       <div class="muted center">${t.qrPreviewNote}</div>
     </div></div>`;
   }
@@ -1274,6 +1600,18 @@ function render() {
   } else if (v.view === 'club') {
     title = clubOf(v.id).name;
     html = viewClub(t, v.id);
+  } else if (v.view === 'shopHub') {
+    title = t.mall;
+    html = viewShopHub(t);
+  } else if (v.view === 'mall') {
+    title = `${clubOf(v.id).name} · ${t.mall}`;
+    html = viewMall(t, v.id);
+  } else if (v.view === 'clubMembers') {
+    title = `${clubOf(v.id).name} · ${t.statMembers}`;
+    html = viewClubMembers(t, v.id);
+  } else if (v.view === 'clubEvents') {
+    title = `${clubOf(v.id).name} · ${v.comps ? t.statGames : t.statSessions}`;
+    html = viewClubEvents(t, v.id, v.comps);
   } else if (v.view === 'event') {
     title = eventOf(v.id).title;
     html = viewEvent(t, v.id);
@@ -1317,6 +1655,7 @@ function render() {
     <div class="nav">${ui.stack.length ? `<button class="back" data-act="back" aria-label="Back">‹</button>` : '<span></span>'}<div class="title">${esc(title)}</div><div class="langsw" role="group" aria-label="Language">${[['zh', '中'], ['en', 'EN']].map(([l, n]) => `<button class="${i18n.getLang() === l ? 'on' : ''}" data-act="lang" data-l="${l}">${n}</button>`).join('')}</div></div>
     <div class="scroll" id="scroll"><div class="page">${html}</div></div>
     ${v && v.view === 'event' ? eventActionBar(t, v.id) : ''}
+    ${v && v.view === 'club' ? clubActionBar(t, v.id) : ''}
     ${ui.stack.length ? '' : `<nav class="tabbar">
       <button class="${ui.tab === 'home' ? 'on' : ''}" data-act="tab" data-tab="home">${icon('<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>')}${t.tabHome}</button>
       <button class="launch" data-act="launch"><span class="plus">＋</span>${t.launch}</button>
@@ -1332,7 +1671,7 @@ function drawQr() {
   if (!box) return;
   const sh = ui.sheet;
   const inv = sh.kind === 'invite' && st.invites.find((i) => i.guestId === sh.guestId);
-  const text = 'https://claude.ai/artifact/R3D2paBetipAPpUdmAGtww#' + (inv ? 'invite-' + inv.code : 'event-' + sh.eventId);
+  const text = sh.text || 'https://claude.ai/artifact/R3D2paBetipAPpUdmAGtww#' + (inv ? 'invite-' + inv.code : 'event-' + sh.eventId);
   try {
     const qr = qrcode(0, 'M');
     qr.addData(text);
@@ -1377,7 +1716,9 @@ const actions = {
     render();
   },
   club(d) {
-    ui.clubTab = 'events';
+    ui.clubTab = 'home';
+    ui.rankKind = 'active';
+    ui.period = 'all';
     go({ view: 'club', id: d.id });
   },
   event(d) {
@@ -1592,6 +1933,146 @@ const actions = {
     actions.edit();
     if (!PR.nextChangeAt(st.users[ME], 'pbLevel', Date.now())) actions.openLevel();
   },
+  clubMembers() {
+    go({ view: 'clubMembers', id: top().id });
+  },
+  clubSessions() {
+    go({ view: 'clubEvents', id: top().id, comps: false });
+  },
+  clubComps() {
+    go({ view: 'clubEvents', id: top().id, comps: true });
+  },
+  clubQr() {
+    const c = clubOf(top().id);
+    ui.sheet = { kind: 'qr', title: i18n.t('clubQrTitle'), text: 'https://claude.ai/artifact/R3D2paBetipAPpUdmAGtww#club-' + c.inviteCode, note: f(i18n.t('inviteCodeLine'), c.inviteCode) };
+    rerender();
+  },
+  shopHub() {
+    ui.hubTab = 'platform';
+    go({ view: 'shopHub' });
+  },
+  hubTab(d) {
+    ui.hubTab = d.k;
+    rerender();
+  },
+  openMallOf(d) {
+    ui.mallTab = 'shop';
+    go({ view: 'mall', id: d.id });
+  },
+  buyCard(d) {
+    if (activityPoints(ME).left < CARD_PRICE) return toast(i18n.t('notEnoughPts'));
+    const u = st.users[ME];
+    u.changeCredits = u.changeCredits || {};
+    u.changeCredits[d.k] = (u.changeCredits[d.k] || 0) + 1;
+    st.cardRedemptions = st.cardRedemptions || [];
+    st.cardRedemptions.push({ userId: ME, card: d.k, pts: CARD_PRICE, at: Date.now() });
+    save();
+    rerender();
+    toast(i18n.t('cardRedeemed'));
+  },
+  openMall() {
+    ui.mallTab = 'shop';
+    go({ view: 'mall', id: top().id });
+  },
+  mallTab(d) {
+    ui.mallTab = d.k;
+    rerender();
+  },
+  redeemAsk(d) {
+    ui.sheet = { kind: 'redeem', clubId: top().id, itemId: d.id };
+    rerender();
+  },
+  redeemDo() {
+    const s = ui.sheet;
+    const it = st.mall[s.clubId].find((x) => x.id === s.itemId);
+    if (it.stock <= 0) return toast(i18n.t('outOfStock'));
+    if (mallPoints(s.clubId, ME).left < it.pts) return toast(i18n.t('notEnoughPts'));
+    it.stock -= 1;
+    st.redemptions.push({ id: 'r' + st.seq++, clubId: s.clubId, userId: ME, itemId: it.id, pts: it.pts, at: Date.now(), status: 'pending' });
+    ui.sheet = null;
+    save();
+    rerender();
+    toast(i18n.t('redeemed'));
+  },
+  markGiven(d) {
+    st.redemptions.find((r) => r.id === d.id).status = 'done';
+    save();
+    rerender();
+  },
+  restock(d) {
+    st.mall[top().id].find((x) => x.id === d.id).stock += 5;
+    save();
+    rerender();
+  },
+  vipTbd() {
+    toast(i18n.t('vipTbd'));
+  },
+  memberOps(d) {
+    ui.sheet = { kind: 'memberOps', clubId: top().id, userId: d.id };
+    rerender();
+  },
+  memberOp(d) {
+    const s = ui.sheet;
+    const m = memberOf(s.clubId, s.userId);
+    if (d.k === 'certOpen') ui.sheet = { kind: 'cert', clubId: s.clubId, userId: s.userId };
+    else {
+      if (d.k === 'setAdmin') m.role = 'admin';
+      if (d.k === 'setMember') m.role = 'member';
+      if (d.k === 'kick') st.members = st.members.filter((x) => x !== m);
+      if (d.k === 'transfer') {
+        memberOf(s.clubId, ME).role = 'admin';
+        m.role = 'owner';
+      }
+      ui.sheet = null;
+      save();
+      toast(i18n.t('saved'));
+    }
+    rerender();
+  },
+  certPick(d) {
+    const s = ui.sheet;
+    memberOf(s.clubId, s.userId).cert = { value: Number(d.l), by: ME, at: Date.now() };
+    ui.sheet = null;
+    save();
+    rerender();
+    toast(i18n.t('certified'));
+  },
+  certClear() {
+    const s = ui.sheet;
+    delete memberOf(s.clubId, s.userId).cert;
+    ui.sheet = null;
+    save();
+    rerender();
+  },
+  rankType(d) {
+    ui.rankType = d.k;
+    rerender();
+  },
+  toggleJoinOrder() {
+    ui.newFirst = !ui.newFirst;
+    rerender();
+  },
+  applyJoin() {
+    const c = clubOf(top().id);
+    c.applied = true;
+    save();
+    rerender();
+    toast(i18n.t('applySent'));
+  },
+  rankKind(d) {
+    ui.rankKind = d.k;
+    rerender();
+  },
+  toggleMembersOnly() {
+    ui.membersOnly = !ui.membersOnly;
+    rerender();
+  },
+  soon() {
+    toast(i18n.t('comingSoon'));
+  },
+  newEventNa() {
+    toast(px('notInPreview'));
+  },
   openStrength() {
     ui.sheet = { kind: 'strength', eventId: top().id };
     rerender();
@@ -1676,7 +2157,13 @@ const actions = {
       if (!r.allowed) return toast(i18n.errMsg('pbLevelChangeLimit', { at: r.nextAt }));
       Object.assign(patch, r.data, { pbLevel: e.pb });
     }
-    Object.assign(u, patch);
+    // 规则模块返回的是云数据库的点路径写法（如 changeCredits.nickName），这里按路径写回
+    Object.entries(patch).forEach(([k, v]) => {
+      const ks = k.split('.');
+      let o = u;
+      ks.slice(0, -1).forEach((x) => (o = o[x] = o[x] || {}));
+      o[ks[ks.length - 1]] = v;
+    });
     // 还没打过比赛：等级作为起始评分
     if (e.pb && !u.doubles.games && !u.singles.games) {
       u.doubles.rating = e.pb.value;
