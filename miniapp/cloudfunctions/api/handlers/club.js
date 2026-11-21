@@ -13,6 +13,9 @@ const {
 } = require('./common');
 
 const CURRENCIES = ['A$', '¥', 'RM', 'S$', '₫', '$'];
+// VIP：premium 为 true，且未过期（premiumUntil 为空表示长期有效）
+const isVip = (u, now) => !!u.premium && (!u.premiumUntil || u.premiumUntil > now);
+
 const DEFAULT_SETTINGS = { winPoints: 3, lossPoints: 1, currency: 'A$' };
 
 async function addMember(ctx, clubId, userId, role) {
@@ -25,8 +28,6 @@ async function addMember(ctx, clubId, userId, role) {
 
 async function createClub(ctx, { name, intro, city }) {
   const { db } = ctx;
-  const owned = await db.collection('clubs').where({ ownerId: ctx.openid }).count();
-  if (owned.total >= 10) fail('clubLimit');
   const data = {
     name: str(name, 30, 'clubName', true),
     intro: str(intro, 300, 'intro'),
@@ -37,6 +38,11 @@ async function createClub(ctx, { name, intro, city }) {
     settings: { ...DEFAULT_SETTINGS },
     createdAt: ctx.now(),
   };
+  // 先校验填写内容，再查数量上限：普通用户 1 个，VIP 3 个（见 PRODUCT_RULES.md）
+  const me = await getDoc(db, 'users', ctx.openid);
+  const limit = me && isVip(me, ctx.now()) ? 3 : 1;
+  const owned = await db.collection('clubs').where({ ownerId: ctx.openid }).count();
+  if (owned.total >= limit) fail('clubLimit', { n: limit });
   const { _id } = await db.collection('clubs').add({ data });
   await addMember(ctx, _id, ctx.openid, 'owner');
   return { clubId: _id };
@@ -194,4 +200,5 @@ module.exports = {
   leaderboard,
   isAdminRole,
   CURRENCIES,
+  isVip,
 };

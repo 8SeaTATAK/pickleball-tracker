@@ -254,3 +254,22 @@ test('头像/昵称：首次不计、30 天一次、内容不变不算、临时�
   await db.collection('users').doc('u').update({ data: { premium: true } });
   assert.strictEqual((await U('updateProfile', { nickName: 'E' })).nickName, 'E');
 });
+
+test('创建俱乐部上限：普通用户 1 个，VIP 3 个', async () => {
+  const { as, ok, db } = setup();
+  const call = as('c');
+  const C = ok(call);
+  await C('login');
+  await C('createClub', { name: 'A' });
+  let r = await call('createClub', { name: 'B' });
+  assert.deepStrictEqual([r.error, r.params], ['clubLimit', { n: 1 }]);
+  await db.collection('users').doc('c').update({ data: { premium: true, premiumUntil: 1_900_000_000_000 } });
+  await C('createClub', { name: 'B' });
+  await C('createClub', { name: 'C' });
+  r = await call('createClub', { name: 'D' });
+  assert.deepStrictEqual([r.error, r.params], ['clubLimit', { n: 3 }]);
+  // VIP 过期后按普通用户算
+  await db.collection('users').doc('c').update({ data: { premiumUntil: 1 } });
+  r = await call('createClub', { name: 'E' });
+  assert.deepStrictEqual(r.params, { n: 1 });
+});

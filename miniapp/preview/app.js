@@ -10,7 +10,7 @@ const { predict } = __req('predict');
 const PR = __req('profileRules');
 
 const ME = 'me';
-const STORE = 'pp_state_v17';
+const STORE = 'pp_state_v19';
 const DAY = 86400000;
 
 // 预览专用文案
@@ -65,11 +65,14 @@ function seed() {
   );
   PEOPLE.filter(([id]) => !NON_MEMBERS.includes(id)).forEach(([id]) => st.members.push({ clubId: 'c1', userId: id, role: id === ME ? 'owner' : id === 'wei' ? 'admin' : 'member' }));
   st.members.forEach((m, i) => (m.joinedAt = now - (720 - i * 47) * DAY));
-  Object.assign(st.clubs[0], { short: 'NRP', joinMode: 'review', inviteWho: 'admins', views: 267, visitors: 36, notice: '本周六 9 点开打，请提前 10 分钟到场热身 · Warm up 10 min before 9am', applications: [{ userId: 'tom', at: now - 2 * DAY }, { userId: 'huong', at: now - DAY }] });
+  Object.assign(st.clubs.find((c) => c._id === 'c2'), { adminPerms: { money: false, certify: false }, joinMode: 'review', applications: [{ userId: 'nurul', at: now - 3 * DAY }] });
+  Object.assign(st.users.chen, { premium: true, premiumUntil: now + 200 * DAY });
+  st.clubs.find((c) => c._id === 'c3').shopEnabled = true;
+  Object.assign(st.clubs[0], { shopEnabled: false, short: 'NRP', joinMode: 'review', inviteWho: 'admins', views: 267, visitors: 36, notice: '本周六 9 点开打，请提前 10 分钟到场热身 · Warm up 10 min before 9am', applications: [{ userId: 'tom', at: now - 2 * DAY }, { userId: 'huong', at: now - DAY }] });
   const CERT = { wei: 4.0, chen: 4.5, lin: 3.0, ben: 3.5 };
   st.members.filter((m) => m.clubId === 'c1' && CERT[m.userId]).forEach((m) => (m.cert = { value: CERT[m.userId], by: ME, at: now - 60 * DAY }));
   ['chen', 'wei', 'minh'].forEach((id, i) => st.members.push({ clubId: 'c3', userId: id, role: i === 0 ? 'owner' : 'member', joinedAt: now - 300 * DAY }));
-  [ME, 'alice', 'ben', 'aiman', 'emily'].forEach((id) => st.members.push({ clubId: 'c2', userId: id, role: id === 'alice' ? 'owner' : 'member' }));
+  [ME, 'alice', 'ben', 'aiman', 'emily'].forEach((id) => st.members.push({ clubId: 'c2', userId: id, role: id === 'alice' ? 'owner' : id === ME ? 'admin' : 'member', joinedAt: now - 200 * DAY }));
 
   const at9 = (ts) => {
     const d = new Date(ts);
@@ -234,6 +237,9 @@ const go = (v) => {
 
 const memberOf = (clubId, uid) => st.members.find((m) => m.clubId === clubId && m.userId === uid);
 const isAdmin = (clubId) => ['owner', 'admin'].includes((memberOf(clubId, ME) || {}).role);
+// VIP：¥99/年；只有会长是 VIP 才能为俱乐部开通积分商城；普通用户最多建 1 个俱乐部，VIP 最多 3 个
+const isVip = (u) => !!u.premium && (!u.premiumUntil || u.premiumUntil > Date.now());
+const shopOn = (clubId) => !!(clubOf(clubId) || {}).shopEnabled;
 const isOwner = (clubId) => (memberOf(clubId, ME) || {}).role === 'owner';
 // 权限：会长全部；副会长按俱乐部设置的「副会长权限」（默认全开）
 const PERMS = ['events', 'scores', 'members', 'certify', 'money', 'shop'];
@@ -308,20 +314,31 @@ function viewHome(t) {
   const others = st.clubs.filter((c) => !memberOf(c._id, ME));
   return `${tabs}${myClubs.length ? myClubs.map(card).join('') : `<div class="card empty">${t.noClubs}</div>`}
   ${others.length ? `<div class="section-title">${t.otherClubs}</div>${others.map((c) => card({ c, role: null })).join('')}` : ''}
-  <div class="btn-row"><button class="btn" data-act="na">${t.createClub}</button><button class="btn ghost" data-act="na">${t.joinByCode}</button></div>`;
+  <div class="btn-row"><button class="btn" data-act="createClubTry">${t.createClub}</button><button class="btn ghost" data-act="na">${t.joinByCode}</button></div>`;
 }
 
 // 付费特权（功能对比；价格待定，暂不开放）
 function viewPremium(t) {
-  const rows = [['pf_basic', true, true], ['pf_stats', false, true], ['pf_formats', false, true], ['pf_edit', false, true], ['pf_noLimit', false, true]];
-  const mark = (v) => (v ? '<span class="ok">✓</span>' : '<span class="muted">×</span>');
-  return `<div class="card center"><span>${esc(f(t.currentPlan, ''))}</span><b class="hi">${st.users[ME].premium ? t.planPaid : t.planFree}</b> <button class="btn mini" data-act="soon" style="margin-left:8px">${t.upgrade}</button></div>
+  const u = st.users[ME];
+  const vip = isVip(u);
+  const mark = (v) => (v === true ? '<span class="ok">✓</span>' : v === false ? '<span class="muted">×</span>' : `<span>${v}</span>`);
+  const rows = [
+    ['pf_basic', true, true],
+    ['pf_clubs', f(t.clubsN, 1), f(t.clubsN, 3)],
+    ['pf_shop', false, true],
+    ['pf_stats', false, true],
+    ['pf_formats', false, true],
+    ['pf_edit', false, true],
+    ['pf_noLimit', false, true],
+  ];
+  return `<div class="card center"><span>${esc(f(t.currentPlan, ''))}</span><b class="hi">${vip ? 'VIP' : t.planFree}</b>
+    ${vip ? `<div class="muted">${esc(f(t.vipActive, fmt.date(u.premiumUntil)))}</div>` : `<div style="margin-top:10px"><button class="btn" data-act="becomeVip">${t.upgradeSim}</button></div>`}</div>
   <div class="card"><div class="table">
-    <div class="tr th"><span class="name">${t.colFeature}</span><span class="c w">${t.planFree}</span><span class="c w">${t.planPaid}</span></div>
+    <div class="tr th"><span class="name">${t.colFeature}</span><span class="c w">${t.planFree}</span><span class="c w">VIP</span></div>
     ${rows.map(([k, a, b]) => `<div class="tr" style="cursor:default"><span class="name" style="white-space:normal">${t[k]}</span><span class="c w">${mark(a)}</span><span class="c w">${mark(b)}</span></div>`).join('')}
     <div class="tr" style="cursor:default"><span class="name muted">…</span><span class="muted" style="flex:1;text-align:center">${t.pf_more}</span></div>
-    <div class="tr" style="cursor:default"><span class="name">${t.priceRow}</span><span class="c w">${t.feeFree}</span><span class="c w muted">${t.priceTbd}</span></div>
-  </div><div class="muted" style="margin-top:10px">${t.premiumNote}</div></div>`;
+    <div class="tr" style="cursor:default"><span class="name">${t.priceRow}</span><span class="c w">${t.feeFree}</span><span class="c w hi">${t.priceVip}</span></div>
+  </div><div class="muted" style="margin-top:10px">${t.vipNote}</div></div>`;
 }
 
 // 反馈（小程序里用微信自带的反馈页）
@@ -380,7 +397,7 @@ function clubHome(t, c, role, admin) {
   return `
   ${c.notice && !hidden ? `<div class="notice">📢 ${esc(c.notice)}</div>` : ''}
   <div class="card info-card">
-    <div class="row between"><div class="row" style="gap:10px">${clubAvatar(c)}<div class="bold ev-title">${esc(c.name)}${c.private ? ` <span class="tag gray">🔒 ${t.privateClub}</span>` : ''}</div></div><button class="qr-btn" data-act="clubQr" aria-label="${t.linkQr}">${QR_ICON}</button></div>
+    <div class="row between"><div class="row" style="gap:10px">${clubAvatar(c)}<div class="bold ev-title">${esc(c.name)}${c.private ? ` <span class="tag gray">🔒 ${t.privateClub}</span>` : ''}</div></div><div class="row" style="gap:6px">${isAdmin(c._id) ? `<button class="btn mini" data-act="clubAdmin">🛠 ${t.manage}</button>` : ''}<button class="qr-btn" data-act="clubQr" aria-label="${t.linkQr}">${QR_ICON}</button></div></div>
     ${v ? `<a class="irow" href="${map}" target="_blank" rel="noopener"><span class="ii">📍</span><span class="grow">${esc(f(t.venueLine, v.name))}</span><span class="arrow">›</span></a>` : ''}
     <div class="irow"><span class="ii">👁</span><span class="grow">${esc(f(t.viewsLineClub, c.visitors || 1, c.views || 1))}</span></div>
     <div class="irow"><span class="ii">ℹ️</span><span class="grow">${esc(f(t.introLine, c.intro || t.noIntroYet))}</span>${iAmOwner ? `<button class="link" data-act="clubSettings" aria-label="${t.clubSettings}">✎</button>` : ''}</div>
@@ -400,6 +417,7 @@ function clubHome(t, c, role, admin) {
     <div class="faces-row big">${mem.slice(0, 10).map((u) => avatar(u)).join('')}</div>
   </div>`}
   ${owner ? `<div class="card item" data-act="player" data-id="${owner._id}" role="button" tabindex="0" style="padding:12px 16px">${avatar(owner)}<span class="grow">${esc(owner.nickName)}<span class="muted">（${fmt.role('owner')}）</span></span><span class="arrow">›</span></div>` : ''}
+  ${shopOn(c._id) && !hidden ? `<div class="card row" data-act="openMall" role="button" tabindex="0" style="cursor:pointer;gap:10px"><span class="mall-ic sm">${ICONS.shop}</span><span class="grow bold">${t.mall}</span><span class="muted">${esc(f(t.myClubPts, mallPoints(c._id, ME).left))}</span><span class="arrow">›</span></div>` : ''}
   ${can(c._id, 'events') ? `<button class="btn" data-act="newEventNa">${t.newEvent}</button>` : ''}`;
 }
 
@@ -510,7 +528,7 @@ function clubMe(t, c, role) {
     <div class="irow"><span class="ii">🏷️</span><span class="grow">${t.myClubRole}：${fmt.role(role)}${m && m.joinedAt ? ` · ${esc(f(t.joinedOn, fmt.date(m.joinedAt)))}` : ''}</span></div>
     <div class="irow"><span class="ii">📊</span><span class="grow">${esc(f(t.myClubStats, sessions, games.length, games.length ? Math.round((wins / games.length) * 100) : 0))}</span></div>
     ${idx >= 0 ? `<div class="irow"><span class="ii">🔥</span><span class="grow">${esc(f(t.myActiveRank, act[idx].v, idx + 1))}</span></div>` : ''}
-    <div class="irow" data-act="openMall" role="button" tabindex="0" style="cursor:pointer"><span class="ii">🎁</span><span class="grow">${t.mall}：<b class="num" style="color:var(--clay)">${mallPoints(c._id, ME).left}</b> ${t.mallBalance}</span><span class="arrow">›</span></div>
+    ${shopOn(c._id) ? '' : '<!--'}<div class="irow" data-act="openMall" role="button" tabindex="0" style="cursor:pointer"><span class="ii">🎁</span><span class="grow">${t.mall}：<b class="num" style="color:var(--clay)">${mallPoints(c._id, ME).left}</b> ${t.mallBalance}</span><span class="arrow">›</span></div>${shopOn(c._id) ? '' : '-->'}
     <div class="irow"><span class="ii">✅</span><span class="grow">${t.certifiedLevel}：${m && m.cert ? `<b class="num">${Number(m.cert.value).toFixed(1)}</b> <span class="tag cert">${t.tagCert}</span>` : `<span class="muted">${t.notRated}</span>`}</span></div>
   </div>`;
 }
@@ -541,11 +559,11 @@ function clubActionBar(t, id) {
   return `<div class="actionbar club-bar">
     <div class="btn-row">
       ${canInvite ? `<button class="pill share" data-act="clubInvite">${t.btnInviteFriends}</button>` : ''}
-      ${can(id, 'certify') ? `<button class="pill blue" data-act="clubMembers">${t.btnCertify}</button>` : ''}
+      ${isAdmin(id) ? `<button class="pill blue" data-act="clubAdmin">🛠 ${t.adminConsole}</button>` : ''}
     </div>
     <div class="club-links">
       ${isOwner(id) ? `<button class="link" data-act="clubSettings">${t.linkSettings}</button>` : ''}
-      <button class="link" data-act="openMall">🎁 ${t.mall}</button>
+      ${shopOn(id) ? `<button class="link" data-act="openMall">🎁 ${t.mall}</button>` : ''}
       <button class="link" data-act="clubQr">${t.linkQr}</button>
       <button class="link" data-act="clubMembers">${t.linkMembers}</button>
       <button class="link muted" data-act="vipTbd">${t.linkVip}</button>
@@ -572,6 +590,7 @@ function viewClubSettings(t, id) {
     ${opt(t.cs_inviteWho, 'inviteWho', t['iw_' + (c.inviteWho || 'admins')])}
     ${opt(t.cs_visible, 'visible', c.private ? t.privateClub : t.vis_all)}
   </div>
+  <div class="card elist"><button class="erow" data-act="shopToggle"><span class="ek">🎁 ${t.mall}</span><span class="ev ${c.shopEnabled ? '' : 'warnv'}">${c.shopEnabled ? t.shopOn : t.shopOff}</span><span class="switch ${c.shopEnabled ? 'on' : ''}"></span></button>${c.shopEnabled ? '' : `<div class="muted ehint" style="text-align:left">${t.shopNeedVip}</div>`}</div>
   <div class="card elist">${txt(t.cs_phone, 'phone', c.phone)}${txt(t.cs_wechat, 'wechat', c.wechat)}</div>
   <div class="card elist">${txt(t.billPayId, 'payId', c.payId)}${row(t.fxRate, c.fxRate ? `1 A$ = ¥${c.fxRate}` : f(t.setPrompt, t.fxRate), 'editField', 'fxRate', !c.fxRate)}</div>
   <div class="section-title">${t.cs_adminPerms}</div>
@@ -1424,10 +1443,11 @@ const itemPic = (it, cls = 'mall-ic') => (it.photo ? `<span class="${cls}"><img 
 
 function viewMall(t, clubId) {
   const c = clubOf(clubId);
+  if (!c.shopEnabled) return `<div class="card empty">${t.shopNotOpen}</div>`;
   const admin = isAdmin(clubId);
   const owner = (memberOf(clubId, ME) || {}).role === 'owner';
   const tab = ui.mallTab || 'shop';
-  const tabs = `<div class="tabs line">${[['shop', t.mallTabShop], ['mine', t.myRedemptions], ...(can(clubId, 'shop') ? [['admin', t.mallAdmin]] : [])]
+  const tabs = `<div class="tabs line">${[['shop', t.mallTabShop], ['mine', t.myRedemptions], ...(can(clubId, 'shop') ? [['admin', t.mallAdmin]] : []), ...(owner ? [['manage', t.mallTabManage]] : [])]
     .map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="mallTab" data-k="${k}">${l}</button>`)
     .join('')}</div>`;
   const items = (st.mall && st.mall[clubId]) || [];
@@ -1439,6 +1459,12 @@ function viewMall(t, clubId) {
       <div class="grow"><div class="ellipsis">${esc(itemName(t, it))}${manage && u ? ` · ${esc(u.nickName)}` : ''}</div><div class="muted num">${fmt.shortDate(r.at)} · ${f(t.ptsUnit, r.pts)}</div></div>
       ${manage && r.status === 'pending' ? `<button class="btn mini" data-act="markGiven" data-id="${r.id}">${t.markGiven}</button>` : `<span class="pay ${r.status === 'done' ? 'paid' : 'claimed'}">${t['rd_' + r.status]}</span>`}</div>`;
   };
+  if (tab === 'manage' && owner) {
+    return `${tabs}<div class="card flush">${items
+      .map((it) => `<div class="item" data-act="editItem" data-id="${it.id}" role="button" tabindex="0">${itemPic(it, 'mall-ic sm')}<div class="grow"><div class="bold ellipsis">${esc(itemName(t, it))}</div><div class="muted num">${f(t.ptsUnit, it.pts)} · ${it.stock > 0 ? f(t.stockN, it.stock) : t.outOfStock}</div></div><span class="link">✎ ${t.editItem}</span></div>`)
+      .join('')}</div>
+    <button class="btn" data-act="editItem" data-id="">＋ ${t.addItem}</button>`;
+  }
   if (tab === 'mine' || tab === 'admin') {
     const list = (st.redemptions || []).filter((r) => r.clubId === clubId && (tab === 'admin' || r.userId === ME)).sort((a, b) => (a.status === 'pending') === (b.status === 'pending') ? b.at - a.at : a.status === 'pending' ? -1 : 1);
     return `${tabs}<div class="card flush">${list.length ? list.map((r) => recRow(r, tab === 'admin')).join('') : `<div class="empty">${t.noRedemptions}</div>`}</div>`;
@@ -1452,10 +1478,10 @@ function viewMall(t, clubId) {
       return `<div class="card mall-item">${itemPic(it)}<div class="bold ellipsis">${esc(itemName(t, it))}</div>
         <div class="num" style="color:var(--clay);font-weight:700">${f(t.ptsUnit, it.pts)}</div><div class="muted">${it.stock > 0 ? f(t.stockN, it.stock) : t.outOfStock}</div>
         <button class="btn mini" data-act="redeemAsk" data-id="${it.id}" ${can ? '' : 'disabled'}>${it.stock <= 0 ? t.outOfStock : p.left < it.pts ? t.notEnoughPts : t.redeem}</button>
-        ${owner ? `<button class="link" data-act="editItem" data-id="${it.id}">✎ ${t.editItem}</button>` : ''}</div>`;
+</div>`;
     })
     .join('')}</div>
-  ${owner ? `<button class="btn ghost" data-act="editItem" data-id="">＋ ${t.addItem}</button>` : ''}`;
+`;
 }
 
 
@@ -1472,9 +1498,9 @@ function viewShopHub(t) {
   const tab = ui.hubTab || 'platform';
   const tabs = `<div class="tabs line">${[['platform', t.platformShop], ['clubs', t.clubShop]].map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="hubTab" data-k="${k}">${l}</button>`).join('')}</div>`;
   if (tab === 'clubs') {
-    const mine = st.members.filter((m) => m.userId === ME).map((m) => clubOf(m.clubId));
+    const mine = st.members.filter((m) => m.userId === ME).map((m) => clubOf(m.clubId)).filter((c) => c && c.shopEnabled);
     return `${tabs}<div class="muted" style="padding:0 4px">${t.clubPtsRule}</div>
-    <div class="card flush">${mine
+    <div class="card flush">${mine.length ? '' : `<div class="empty">${t.noShopClubs}</div>`}${mine
       .map((c) => `<div class="item" data-act="openMallOf" data-id="${c._id}" role="button" tabindex="0">${clubAvatar(c)}
         <div class="grow"><div class="bold ellipsis">${esc(c.name)}</div><div class="muted">${esc(f(t.myClubPts, mallPoints(c._id, ME).left))}</div></div><span class="arrow">›</span></div>`)
       .join('')}</div>`;
@@ -1493,6 +1519,58 @@ function viewShopHub(t) {
     .join('')}`;
 }
 
+
+// ---------------- 管理后台（会长 / 副会长） ----------------
+function viewClubAdmin(t, id) {
+  const c = clubOf(id);
+  const owner = isOwner(id);
+  const apps = (c.applications || []).length;
+  const pendingGifts = (st.redemptions || []).filter((r) => r.clubId === id && r.status === 'pending').length;
+  const item = (act, ic, label, ok, badge, extra = '') =>
+    `<button class="li ${ok ? '' : 'off'}" ${ok ? `data-act="${act}" ${extra}` : 'disabled'}><span class="li-ic">${ic}</span><span class="grow">${label}</span>${badge ? `<span class="tag clay">${badge}</span>` : ''}<span class="arrow">›</span></button>`;
+  const daily = [
+    item('newEventNa', '📣', t.newEventTitle, can(id, 'events')),
+    item('clubMembers', '📝', f(t.applicationsN, apps), can(id, 'members'), apps ? f(t.pendingN, apps) : ''),
+    item('clubMembers', '👥', t.linkMembers, true),
+    item('clubMembers', '✅', t.btnCertify, can(id, 'certify')),
+    item('admMoney', '💳', t.adm_money, can(id, 'money')),
+    item('admGifts', '🎁', t.adm_shopGive, can(id, 'shop') && shopOn(id), pendingGifts && shopOn(id) ? f(t.pendingN, pendingGifts) : ''),
+  ];
+  const anyOff = !owner && PERMS.some((k) => !can(id, k));
+  return `<div class="card row" style="gap:10px">${clubAvatar(c)}<div class="grow"><div class="bold">${esc(c.name)}</div><div class="muted">${t.myClubRole}：${fmt.role((memberOf(id, ME) || {}).role)}</div></div></div>
+  <div class="section-title">${t.adminSection}</div>
+  <div class="card mlist">${daily.join('')}</div>
+  ${anyOff ? `<div class="muted" style="padding:0 4px">${t.permsOffNote}</div>` : ''}
+  ${
+    owner
+      ? `<div class="section-title">${t.ownerSection}</div>
+  <div class="card mlist">
+    ${item('clubSettings', '⚙️', t.clubSettings, true)}
+    ${item('clubSettings', '🔐', t.cs_adminPerms, true)}
+    ${item('clubSettings', '🎁', `${t.mall}：${shopOn(id) ? t.shopOn : t.shopOff}`, true)}
+    ${item('admShopManage', '🛍️', t.adm_shopManage, true)}
+  </div>`
+      : ''
+  }`;
+}
+
+// 收款记录：每场 AA 的付款情况
+function viewClubMoney(t, id) {
+  const evs = clubEvents(id).filter((e) => e.bill);
+  return `<div class="card flush">${
+    evs.length
+      ? evs
+          .map((e) => {
+            const ids = Object.keys(e.bill.items);
+            const unpaid = ids.filter((u) => e.bill.items[u] !== 'paid').length;
+            return `<div class="item" data-act="event" data-id="${e._id}" role="button" tabindex="0"><div class="grow"><div class="bold ellipsis">${esc(e.title)}</div><div class="muted">${fmt.shortDate(e.startTime)} · ${money(e.clubId, Object.values(e.bill.amounts).reduce((a, b) => a + b, 0))}</div></div>
+            <span class="pay ${unpaid ? 'unpaid' : 'paid'}">${unpaid ? f(t.unpaidN, unpaid) : t.allPaid}</span><span class="arrow">›</span></div>`;
+          })
+          .join('')
+      : `<div class="empty">${t.noBills}</div>`
+  }</div>`;
+}
+
 // ---------------- 弹层 ----------------
 function sheetHtml(t) {
   const s = ui.sheet;
@@ -1504,6 +1582,14 @@ function sheetHtml(t) {
       <input id="noteInput" class="note-input" maxlength="10" placeholder="${t.notePh}" value="${esc(s.text)}" data-input="note">
       <div class="note-tags">${NOTE_TAGS.map((k) => `<button class="${s.text === t['tag_' + k] ? 'on' : ''}" data-act="pickNote" data-k="${k}">${t['tag_' + k]}</button>`).join('')}</div>
       <div class="btn-row"><button class="btn" data-act="saveNote">${t.addNote}</button><button class="btn ghost" data-act="closeSheet">${t.close}</button></div>
+    </div></div>`;
+  }
+  if (s.kind === 'needVip') {
+    return `<div class="mask center-mask" data-act="closeSheet"><div class="dialog" data-stop="1">
+      <div class="bold center">🎁 ${t.enableShop}</div>
+      <div>${t.shopNeedVip}</div>
+      <div class="center hi">${t.priceVip}</div>
+      <div class="btn-row"><button class="btn ghost" data-act="closeSheet">${t.cancel}</button><button class="btn" data-act="goVip">${t.goVip}</button></div>
     </div></div>`;
   }
   if (s.kind === 'editField') {
@@ -1745,6 +1831,12 @@ function render() {
   } else if (v.view === 'feedback') {
     title = t.fbTitle;
     html = viewFeedback(t);
+  } else if (v.view === 'clubAdmin') {
+    title = t.adminConsole;
+    html = viewClubAdmin(t, v.id);
+  } else if (v.view === 'clubMoney') {
+    title = t.adm_money;
+    html = viewClubMoney(t, v.id);
   } else if (v.view === 'clubSettings') {
     title = t.clubSettings;
     html = viewClubSettings(t, v.id);
@@ -2093,6 +2185,52 @@ const actions = {
   },
   clubComps() {
     go({ view: 'clubEvents', id: top().id, comps: true });
+  },
+  clubAdmin() {
+    go({ view: 'clubAdmin', id: top().id });
+  },
+  admMoney() {
+    go({ view: 'clubMoney', id: top().id });
+  },
+  admGifts() {
+    ui.mallTab = 'admin';
+    go({ view: 'mall', id: top().id });
+  },
+  admShopManage() {
+    if (!shopOn(top().id)) return toast(i18n.t('adm_shopNeedOn'));
+    ui.mallTab = 'manage';
+    go({ view: 'mall', id: top().id });
+  },
+  becomeVip() {
+    Object.assign(st.users[ME], { premium: true, premiumUntil: Date.now() + 365 * DAY });
+    save();
+    rerender();
+    toast(i18n.t('vipDone'));
+  },
+  shopToggle() {
+    const c = clubOf(top().id);
+    if (c.shopEnabled) {
+      c.shopEnabled = false;
+    } else {
+      if (!isVip(st.users[ME])) {
+        ui.sheet = { kind: 'needVip' };
+        return rerender();
+      }
+      c.shopEnabled = true;
+    }
+    save();
+    rerender();
+    if (c.shopEnabled) toast(i18n.t('shopEnabledToast'));
+  },
+  goVip() {
+    ui.sheet = null;
+    go({ view: 'premium' });
+  },
+  createClubTry() {
+    const owned = st.clubs.filter((c) => (st.members.find((m) => m.clubId === c._id && m.role === 'owner') || {}).userId === ME).length;
+    const limit = isVip(st.users[ME]) ? 3 : 1;
+    if (owned >= limit) return toast(i18n.errMsg('clubLimit', { n: limit }));
+    toast(px('notInPreview'));
   },
   homeTab(d) {
     ui.homeTab = d.k;
