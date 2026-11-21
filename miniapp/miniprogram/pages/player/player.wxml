@@ -1,1 +1,67 @@
-<include src="../profile/profile.wxml" />
+<wxs src="../../utils/i18n.wxs" module="i" />
+<view class="page" wx:if="{{user}}">
+  <view class="card">
+    <view class="row gap">
+      <view class="avatar big">
+        <image wx:if="{{user.avatarUrl}}" src="{{user.avatarUrl}}" mode="aspectFill" />
+        <text wx:else>{{user.nickName[0]}}</text>
+      </view>
+      <view class="grow">
+        <view class="row">
+          <text class="bold name">{{user.nickName}}</text>
+          <text class="tag gray" wx:if="{{user.guest}}">{{t.guestPlayer}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="tabs">
+    <view class="tab {{tab == 'doubles' ? 'on' : ''}}" data-tab="doubles" bindtap="switchTab">{{t.doubles}}</view>
+    <view class="tab {{tab == 'singles' ? 'on' : ''}}" data-tab="singles" bindtap="switchTab">{{t.singles}}</view>
+  </view>
+
+  <view class="card">
+    <view class="row between">
+      <view>
+        <view class="muted">{{i.f(t.ratingSim, tab == 'doubles' ? t.doublesRating : t.singlesRating)}}</view>
+        <view class="row">
+          <text class="rating-big">{{blocks[tab].ratingText}}</text>
+          <text class="tag clay" wx:if="{{blocks[tab].provisional}}">{{t.provisional}}</text>
+        </view>
+      </view>
+      <text class="link small" bindtap="goRules">{{t.howCalc}}</text>
+    </view>
+    <view class="stats row">
+      <view class="grow center"><view class="bold">{{blocks[tab].games}}</view><view class="muted">{{t.games}}</view></view>
+      <view class="grow center"><view class="bold">{{blocks[tab].wins}}-{{blocks[tab].losses}}</view><view class="muted">{{t.colWL}}</view></view>
+      <view class="grow center"><view class="bold">{{blocks[tab].winRate}}%</view><view class="muted">{{t.colWinRate}}</view></view>
+      <view class="grow center"><view class="bold">{{blocks[tab].reliability}}%</view><view class="muted">{{t.reliability}}</view></view>
+    </view>
+    <view class="bar"><view class="fill" style="width: {{blocks[tab].reliability}}%"></view></view>
+
+    <view class="chart-wrap" wx:if="{{historyCount >= 2}}">
+      <canvas type="2d" id="chart" class="chart"></canvas>
+    </view>
+    <view class="empty" wx:else>{{t.chartEmpty}}</view>
+  </view>
+
+  <view class="section-title">{{t.recentGames}}</view>
+  <view class="card">
+    <view class="list-item" wx:for="{{matches}}" wx:key="_id">
+      <view class="wl {{item.won ? 'w' : 'l'}}">{{item.won ? t.winShort : t.lossShort}}</view>
+      <view class="grow">
+        <view class="ellipsis">
+          <text wx:if="{{item.partner}}">{{i.f(t.withPartner, item.partner)}}</text>
+          <text class="muted">vs</text> {{item.opp}}
+        </view>
+        <view class="muted">{{item.day}} · {{item.type == 'singles' ? t.singles : t.doubles}}</view>
+      </view>
+      <view class="center">
+        <view class="bold">{{item.score}}</view>
+        <view class="small {{item.delta > 0 ? 'up' : item.delta < 0 ? 'down' : 'muted'}}">{{item.deltaText}}</view>
+      </view>
+    </view>
+    <view class="empty" wx:if="{{!matches.length}}">{{t.noGames}}</view>
+  </view>
+
+</view>

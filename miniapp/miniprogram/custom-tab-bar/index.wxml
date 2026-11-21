@@ -1,0 +1,14 @@
+<view class="bar">
+  <view class="item {{selected == 0 ? 'on' : ''}}" data-url="/pages/index/index" bindtap="go">
+    <view class="icon home"></view>
+    <text>{{t.tabHome}}</text>
+  </view>
+  <view class="item launch" bindtap="launch">
+    <view class="plus">＋</view>
+    <text>{{t.launch}}</text>
+  </view>
+  <view class="item {{selected == 2 ? 'on' : ''}}" data-url="/pages/profile/profile" bindtap="go">
+    <view class="icon me"></view>
+    <text>{{t.tabMe}}</text>
+  </view>
+</view>

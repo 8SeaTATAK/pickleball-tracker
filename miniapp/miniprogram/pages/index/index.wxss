@@ -10,3 +10,4 @@
   margin: 16rpx 0;
   height: 60rpx;
 }
+.page { padding-bottom: calc(140rpx + env(safe-area-inset-bottom)); }

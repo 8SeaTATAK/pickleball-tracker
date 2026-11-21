@@ -1,0 +1,16 @@
+<view class="page">
+  <view class="card" wx:if="{{list.length}}">
+    <view class="list-item" wx:for="{{list}}" wx:key="_id" data-id="{{item._id}}" bindtap="goEvent">
+      <view class="grow">
+        <view class="row">
+          <text class="bold ellipsis">{{item.title}}</text>
+          <text class="tag {{item.status == 'playing' ? 'clay' : item.status == 'finished' ? 'gray' : ''}}">{{item.statusText}}</text>
+          <text class="tag gray">{{item.signText}}</text>
+        </view>
+        <view class="muted">{{item.clubName}} · {{item.when}}</view>
+      </view>
+      <view class="muted">{{item.joinedCount}}/{{item.capacity}}</view>
+    </view>
+  </view>
+  <view class="card empty" wx:elif="{{loaded}}">{{t.noMyEvents}}</view>
+</view>

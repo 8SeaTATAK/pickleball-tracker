@@ -53,6 +53,25 @@ function setupEnv() {
     keys.slice(0, -1).forEach((k) => (o = o[k]));
     o[keys[keys.length - 1]] = v;
   };
+  const mkInst = (cfg) => {
+    const inst = Object.create(cfg);
+    inst.data = JSON.parse(JSON.stringify(cfg.data || {}));
+    inst.setData = function (patch, cb) {
+      Object.entries(patch).forEach(([k, v]) => setPath(this.data, k, v));
+      if (cb) cb();
+    };
+    return inst;
+  };
+  let tabBar = null;
+  const openTabBar = () => {
+    let cfg;
+    global.Component = (c) => (cfg = c);
+    delete require.cache[path.join(MP, 'custom-tab-bar/index.js')];
+    require(path.join(MP, 'custom-tab-bar/index.js'));
+    tabBar = mkInst({ data: cfg.data, ...cfg.methods });
+    cfg.lifetimes.attached.call(tabBar);
+    return tabBar;
+  };
   const open = (page, query = {}) => {
     let cfg;
     global.Page = (c) => (cfg = c);
@@ -66,6 +85,9 @@ function setupEnv() {
       if (cb) cb();
     };
     inst.query = query;
+    inst.getTabBar = () => tabBar;
+    inst.route = page;
+    global.getCurrentPages = () => [inst];
     return inst;
   };
   const as = (openid) => {
@@ -75,13 +97,14 @@ function setupEnv() {
   };
   // 等异步回调里的 promise（showModal success 是 async）跑完
   const flush = () => new Promise((r) => setTimeout(r, 20));
-  return { db, env, open, as, flush, app: appInst };
+  return { db, env, open, openTabBar, as, flush, app: appInst };
 }
 
 const ev = (dataset, value) => ({ currentTarget: { dataset }, detail: { value } });
 
 test('页面冒烟：首页 → 建俱乐部 → 发活动 → 报名 → 生成对阵 → 录分 → 个人页', async () => {
-  const { env, open, as, flush } = setupEnv();
+  const { env, open, openTabBar, as, flush } = setupEnv();
+  const bar = openTabBar();
 
   // 首页（空状态）
   let home = open('pages/index/index');
@@ -189,16 +212,59 @@ test('页面冒烟：首页 → 建俱乐部 → 发活动 → 报名 → 生成
   await flush();
   assert.ok(cd.data.board.length === 4);
 
-  // 个人页：设置水平失败（已有比赛）—— 本人参赛了吗？用新用户测
+  // 我的：统计 + tab 栏选中「我的」
   const me = open('pages/profile/profile');
   me.onLoad({});
+  me.onShow();
   await me.load();
-  assert.ok(me.data.self);
-  me.switchTab(ev({ tab: 'singles' }));
-  await me.saveName({ detail: { value: '新名字' } });
+  assert.strictEqual(bar.data.selected, 2);
+  // 前面只录了一场双打、由创建者录分：他要么在场上（1 场比赛），要么不在（1 场裁判）
+  assert.strictEqual(me.data.stats.doublesGames + me.data.stats.umpireDoubles, 1);
+  assert.ok(me.data.user.title);
+
+  // 编辑资料：头像、昵称、性别
+  const edit = open('pages/profile/edit');
+  await edit.onLoad();
+  await edit.onChooseAvatar({ detail: { avatarUrl: '/tmp/a.jpg' } });
+  edit.onName(ev({}, '新名字'));
+  edit.onGender(ev({}, '1'));
+  await edit.save();
+  await me.load();
   assert.strictEqual(me.data.user.nickName, '新名字');
-  await me.onChooseAvatar({ detail: { avatarUrl: '/tmp/a.jpg' } });
   assert.strictEqual(me.data.user.avatarUrl, 'cloud://avatar.jpg');
+  assert.strictEqual(me.data.user.gender, 'm');
+
+  // 我的评分（球员详情）、我的活动、我的比赛、指南
+  const mine = open('pages/player/player');
+  mine.onLoad({ id: 'o_owner' });
+  await mine.load();
+  assert.ok(mine.data.self);
+  mine.switchTab(ev({ tab: 'singles' }));
+  const myEv = open('pages/mine/events/events');
+  myEv.onLoad();
+  await myEv.load();
+  assert.strictEqual(myEv.data.list.length, 1);
+  assert.strictEqual(myEv.data.list[0].signText, '已报名');
+  const myM = open('pages/mine/matches/matches');
+  myM.onLoad();
+  await myM.load();
+  assert.ok(myM.data.done.length + myM.data.pending.length >= 1);
+  for (const topic of ['levels', 'formats', 'start']) {
+    const g = open('pages/guide/guide');
+    g.onLoad({ topic });
+    assert.strictEqual(g.data.topic, topic);
+  }
+  assert.strictEqual(open('pages/guide/guide').data.levels.length, 0);
+
+  // 底部「发起」：发布活动 → 自己管理的俱乐部只有一个，直接进发布页
+  env.sheetIndex = 0;
+  bar.launch();
+  await flush();
+  assert.strictEqual(env.nav.pop(), '/pages/event/edit/edit?clubId=' + clubId);
+  env.sheetIndex = 1;
+  bar.launch();
+  assert.strictEqual(env.nav.pop(), '/pages/club/edit/edit');
+  env.sheetIndex = 0;
 
   // 新用户：从分享进入活动页 → 一键加入俱乐部并报名（满员进候补）
   as('o_new');
@@ -210,10 +276,15 @@ test('页面冒烟：首页 → 建俱乐部 → 发活动 → 报名 → 生成
   await ed2.load();
   assert.strictEqual(ed2.data.mySignup, 'waitlist');
 
-  const p2 = open('pages/profile/profile');
+  // 新用户：还没比赛，可以设置起始水平
+  const e2 = open('pages/profile/edit');
+  await e2.onLoad();
+  assert.ok(e2.data.canLevel);
+  e2.onLevel(ev({}, '4'));
+  await e2.save();
+  const p2 = open('pages/player/player');
+  p2.onLoad({});
   await p2.load();
-  assert.ok(p2.data.canLevel);
-  await p2.onLevel(ev({}, '4'));
   assert.strictEqual(p2.data.blocks.doubles.ratingText, '4.000');
 
   // 查看他人
@@ -246,17 +317,19 @@ test('页面冒烟：首页 → 建俱乐部 → 发活动 → 报名 → 生成
 });
 
 test('多语言：跟随系统语言、手动切换、错误提示翻译', async () => {
-  const { env, open, flush } = setupEnv();
+  const { env, open, openTabBar, flush } = setupEnv();
   env.sysLang = 'en';
   const i18n = require(path.join(MP, 'utils/i18n.js'));
   assert.strictEqual(i18n.getLang(), 'en', '系统英文 → 默认英文');
 
+  const bar = openTabBar();
   const home = open('pages/index/index');
   home.onLoad();
   home.onShow();
   await home.load();
   assert.strictEqual(home.data.t.createClub, 'Create club');
-  assert.strictEqual(env.tabBar[0], 'Home');
+  assert.strictEqual(bar.data.t.tabHome, 'Home');
+  assert.strictEqual(bar.data.selected, 0);
   assert.ok(home.data.user.nickName.startsWith('Player '), '新用户默认英文昵称');
   assert.ok(home.data.user.doublesText.endsWith('provisional'));
 

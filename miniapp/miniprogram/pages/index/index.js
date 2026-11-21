@@ -12,7 +12,12 @@ Page({
 
   onShow() {
     wx.setNavigationBarTitle({ title: i18n.t('appName') });
-    i18n.applyTabBar();
+    i18n.syncTabBar(this, 0);
+    // 从底部「发起 → 邀请码加入」跳过来
+    if (app.globalData.openJoin) {
+      app.globalData.openJoin = false;
+      this.openJoin();
+    }
     this.load();
   },
 

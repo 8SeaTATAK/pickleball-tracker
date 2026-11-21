@@ -1,0 +1,8 @@
+.p { font-size: 26rpx; }
+.h { font-size: 30rpx; font-weight: 600; color: var(--turf); margin-bottom: 8rpx; }
+.lvnum { width: 80rpx; font-size: 36rpx; font-weight: 700; color: var(--turf); flex-shrink: 0; }
+.titles { display: flex; flex-wrap: wrap; margin-top: 16rpx; }
+.ti { width: 50%; display: flex; align-items: center; gap: 12rpx; padding: 8rpx 0; }
+.lv { font-size: 22rpx; padding: 2rpx 14rpx; border-radius: 999rpx; background: var(--turf); color: #fff; }
+.step { display: flex; gap: 20rpx; padding: 16rpx 0; font-size: 27rpx; }
+.no { width: 44rpx; height: 44rpx; border-radius: 50%; background: var(--turf-light); color: var(--turf); text-align: center; line-height: 44rpx; font-weight: 700; flex-shrink: 0; }

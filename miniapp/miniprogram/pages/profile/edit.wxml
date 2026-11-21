@@ -1,0 +1,33 @@
+<view class="page">
+  <view class="card">
+    <button class="avatar-pick" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+      <view class="avatar huge">
+        <image wx:if="{{avatarUrl}}" src="{{avatarUrl}}" mode="aspectFill" />
+        <text wx:else>{{nickName[0]}}</text>
+      </view>
+      <text class="link">{{t.changeAvatar}}</text>
+    </button>
+  </view>
+
+  <view class="card">
+    <view class="field">
+      <text class="label">{{t.nickname}}</text>
+      <input type="nickname" placeholder="{{t.nicknamePh}}" placeholder-class="placeholder" maxlength="20" value="{{nickName}}" bindinput="onName" bindblur="onName" />
+    </view>
+    <view class="field">
+      <text class="label">{{t.gender}}</text>
+      <picker range="{{genderNames}}" value="{{genderIdx}}" bindchange="onGender">
+        <view>{{genderNames[genderIdx]}} ›</view>
+      </picker>
+    </view>
+    <view class="field" wx:if="{{canLevel}}">
+      <text class="label">{{t.startLevel}}</text>
+      <picker range="{{levelNames}}" value="{{levelIdx < 0 ? 3 : levelIdx}}" bindchange="onLevel">
+        <view class="ellipsis">{{levelIdx < 0 ? currentLevel : levelNames[levelIdx]}} ›</view>
+      </picker>
+    </view>
+  </view>
+  <view class="muted hint" wx:if="{{canLevel}}">{{t.setLevelDesc}}</view>
+
+  <button class="btn" bindtap="save" disabled="{{saving || !nickName}}">{{t.save}}</button>
+</view>

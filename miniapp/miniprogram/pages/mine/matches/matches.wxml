@@ -1,0 +1,32 @@
+<view class="page">
+  <block wx:if="{{pending.length}}">
+    <view class="section-title">{{t.upNext}}</view>
+    <view class="card">
+      <view class="list-item" wx:for="{{pending}}" wx:key="_id" data-id="{{item.eventId}}" bindtap="goEvent">
+        <view class="wl p">{{item.round}}</view>
+        <view class="grow">
+          <view class="ellipsis">{{item.mine}} <text class="muted">vs</text> {{item.opp}}</view>
+          <view class="muted ellipsis">{{item.sub}}</view>
+        </view>
+        <text class="tag">{{t.enterScore}}</text>
+      </view>
+    </view>
+  </block>
+
+  <view class="section-title">{{t.finishedGames}}</view>
+  <view class="card">
+    <view class="list-item" wx:for="{{done}}" wx:key="_id" data-id="{{item.eventId}}" bindtap="goEvent">
+      <view class="wl {{item.won ? 'w' : 'l'}}">{{item.won ? t.winShort : t.lossShort}}</view>
+      <view class="grow">
+        <view class="ellipsis">{{item.mine}} <text class="muted">vs</text> {{item.opp}}</view>
+        <view class="muted ellipsis">{{item.sub}}</view>
+      </view>
+      <view class="center">
+        <view class="bold">{{item.score}}</view>
+        <view class="small {{item.delta > 0 ? 'up' : item.delta < 0 ? 'down' : 'muted'}}">{{item.deltaText}}</view>
+      </view>
+    </view>
+    <view class="empty" wx:if="{{loaded && !done.length}}">{{t.noGames}}</view>
+  </view>
+  <button class="btn ghost" wx:if="{{hasMore}}" bindtap="more">{{t.loadMore}}</button>
+</view>

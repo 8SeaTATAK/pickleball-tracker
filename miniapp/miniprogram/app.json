@@ -2,7 +2,11 @@
   "pages": [
     "pages/index/index",
     "pages/profile/profile",
+    "pages/profile/edit",
     "pages/player/player",
+    "pages/mine/events/events",
+    "pages/mine/matches/matches",
+    "pages/guide/guide",
     "pages/club/detail/detail",
     "pages/club/edit/edit",
     "pages/event/detail/detail",
@@ -17,16 +21,24 @@
     "backgroundTextStyle": "dark"
   },
   "tabBar": {
+    "custom": true,
     "color": "#71776f",
     "selectedColor": "#216b43",
     "backgroundColor": "#ffffff",
     "borderStyle": "white",
     "list": [
-      { "pagePath": "pages/index/index", "text": "首页" },
-      { "pagePath": "pages/profile/profile", "text": "我的" }
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的"
+      }
     ]
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json",
-  "lazyCodeLoading": "requiredComponents"
+  "lazyCodeLoading": "requiredComponents",
+  "usingComponents": {}
 }

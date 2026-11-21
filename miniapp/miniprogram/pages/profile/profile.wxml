@@ -1,93 +1,60 @@
 <wxs src="../../utils/i18n.wxs" module="i" />
 <view class="page" wx:if="{{user}}">
-  <view class="card">
-    <view class="row gap">
-      <button wx:if="{{self && !user.guest}}" class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
-        <view class="avatar big">
-          <image wx:if="{{user.avatarUrl}}" src="{{user.avatarUrl}}" mode="aspectFill" />
-          <text wx:else>{{user.nickName[0]}}</text>
-        </view>
-      </button>
-      <view class="avatar big" wx:else>
+  <!-- 个人信息与战绩 -->
+  <view class="card me">
+    <view class="edit" bindtap="go" data-url="/pages/profile/edit">✎</view>
+    <view class="who" bindtap="go" data-url="/pages/profile/edit">
+      <view class="avatar big">
         <image wx:if="{{user.avatarUrl}}" src="{{user.avatarUrl}}" mode="aspectFill" />
         <text wx:else>{{user.nickName[0]}}</text>
       </view>
-      <view class="grow">
-        <input wx:if="{{editingName}}" type="nickname" class="name-input" value="{{user.nickName}}" focus maxlength="20" bindblur="saveName" bindconfirm="saveName" />
-        <view wx:else class="row">
-          <text class="bold name">{{user.nickName}}</text>
-          <text class="tag gray" wx:if="{{user.guest}}">{{t.guestPlayer}}</text>
-          <text class="muted edit" wx:if="{{self}}" bindtap="editName">{{t.editName}}</text>
-        </view>
-        <view class="muted" wx:if="{{self && !user.guest}}">{{t.tapAvatar}}</view>
+      <view class="name-row">
+        <text class="bold name">{{user.nickName}}</text>
+        <text class="sex m" wx:if="{{user.gender == 'm'}}">♂</text>
+        <text class="sex f" wx:if="{{user.gender == 'f'}}">♀</text>
+        <text class="lv">{{user.title}}</text>
+      </view>
+      <view class="muted">{{user.ratingsLine}}</view>
+    </view>
+
+    <view class="stats">
+      <view class="half">
+        <view class="kv"><view class="k">{{t.singles}}</view><view class="v">{{i.f(t.gamesCount, stats.singlesGames)}}</view></view>
+        <view class="kv"><view class="k">{{t.colWinRate}}</view><view class="v">{{stats.singlesRate}}%</view></view>
+      </view>
+      <view class="divider"></view>
+      <view class="half">
+        <view class="kv"><view class="k">{{t.doubles}}</view><view class="v">{{i.f(t.gamesCount, stats.doublesGames)}}</view></view>
+        <view class="kv"><view class="k">{{t.colWinRate}}</view><view class="v">{{stats.doublesRate}}%</view></view>
       </view>
     </view>
+    <view class="umpire">
+      <text>{{t.umpireSingles}}: <text class="v">{{i.f(t.gamesCount, stats.umpireSingles)}}</text></text>
+      <text>{{t.umpireDoubles}}: <text class="v">{{i.f(t.gamesCount, stats.umpireDoubles)}}</text></text>
+    </view>
+    <view class="note">{{t.finishedOnly}}</view>
   </view>
 
-  <!-- 起始水平 -->
-  <view class="card level" wx:if="{{canLevel}}">
-    <view class="bold">{{t.setLevelTitle}}</view>
-    <view class="muted">{{t.setLevelDesc}}</view>
-    <picker range="{{levelNames}}" value="{{levelIdx}}" bindchange="onLevel">
-      <button class="btn mini">{{i.f(t.chooseLevel, blocks.doubles.ratingText)}}</button>
+  <!-- 功能宫格 -->
+  <view class="card grid">
+    <view class="cell" bindtap="go" data-url="/pages/mine/events/events"><view class="ic c1">📅</view><text>{{t.menu_events}}</text></view>
+    <view class="cell" bindtap="go" data-url="/pages/mine/matches/matches"><view class="ic c2">🏓</view><text>{{t.menu_matches}}</text></view>
+    <view class="cell" bindtap="goRating"><view class="ic c3">📈</view><text>{{t.menu_rating}}</text></view>
+    <view class="cell" bindtap="go" data-url="/pages/guide/guide?topic=levels"><view class="ic c4">🏅</view><text>{{t.menu_levels}}</text></view>
+    <view class="cell" bindtap="go" data-url="/pages/guide/guide?topic=formats"><view class="ic c5">🔄</view><text>{{t.menu_formats}}</text></view>
+    <view class="cell" bindtap="go" data-url="/pages/guide/guide?topic=start"><view class="ic c6">🧭</view><text>{{t.menu_guide}}</text></view>
+    <view class="cell" bindtap="goClubs"><view class="ic c7">🏠</view><text>{{t.myClubs}}</text></view>
+    <view class="cell" bindtap="go" data-url="/pages/rules/rules"><view class="ic c8">📐</view><text>{{t.rulesLink}}</text></view>
+    <button class="cell plain" open-type="contact"><view class="ic c9">💬</view><text>{{t.menu_contact}}</text></button>
+  </view>
+
+  <!-- 列表 -->
+  <view class="card list">
+    <view class="li" bindtap="go" data-url="/pages/profile/edit"><text class="li-ic">✏️</text><text class="grow">{{t.editProfile}}</text><text class="arrow">›</text></view>
+    <button class="li plain" open-type="feedback"><text class="li-ic">✍️</text><text class="grow">{{t.menu_feedback}}</text><text class="arrow">›</text></button>
+    <button class="li plain" open-type="share"><text class="li-ic">🤝</text><text class="grow">{{t.menu_invite}}</text><text class="arrow">›</text></button>
+    <picker range="{{langNames}}" value="{{langIdx}}" bindchange="onLang">
+      <view class="li"><text class="li-ic">🌐</text><text class="grow">{{t.language}}</text><text class="muted">{{langNames[langIdx]}}</text><text class="arrow">›</text></view>
     </picker>
-  </view>
-
-  <view class="tabs">
-    <view class="tab {{tab == 'doubles' ? 'on' : ''}}" data-tab="doubles" bindtap="switchTab">{{t.doubles}}</view>
-    <view class="tab {{tab == 'singles' ? 'on' : ''}}" data-tab="singles" bindtap="switchTab">{{t.singles}}</view>
-  </view>
-
-  <view class="card">
-    <view class="row between">
-      <view>
-        <view class="muted">{{i.f(t.ratingSim, tab == 'doubles' ? t.doublesRating : t.singlesRating)}}</view>
-        <view class="row">
-          <text class="rating-big">{{blocks[tab].ratingText}}</text>
-          <text class="tag clay" wx:if="{{blocks[tab].provisional}}">{{t.provisional}}</text>
-        </view>
-      </view>
-      <text class="link small" bindtap="goRules">{{t.howCalc}}</text>
-    </view>
-    <view class="stats row">
-      <view class="grow center"><view class="bold">{{blocks[tab].games}}</view><view class="muted">{{t.games}}</view></view>
-      <view class="grow center"><view class="bold">{{blocks[tab].wins}}-{{blocks[tab].losses}}</view><view class="muted">{{t.colWL}}</view></view>
-      <view class="grow center"><view class="bold">{{blocks[tab].winRate}}%</view><view class="muted">{{t.colWinRate}}</view></view>
-      <view class="grow center"><view class="bold">{{blocks[tab].reliability}}%</view><view class="muted">{{t.reliability}}</view></view>
-    </view>
-    <view class="bar"><view class="fill" style="width: {{blocks[tab].reliability}}%"></view></view>
-
-    <view class="chart-wrap" wx:if="{{historyCount >= 2}}">
-      <canvas type="2d" id="chart" class="chart"></canvas>
-    </view>
-    <view class="empty" wx:else>{{t.chartEmpty}}</view>
-  </view>
-
-  <view class="section-title">{{t.recentGames}}</view>
-  <view class="card">
-    <view class="list-item" wx:for="{{matches}}" wx:key="_id">
-      <view class="wl {{item.won ? 'w' : 'l'}}">{{item.won ? t.winShort : t.lossShort}}</view>
-      <view class="grow">
-        <view class="ellipsis">
-          <text wx:if="{{item.partner}}">{{i.f(t.withPartner, item.partner)}}</text>
-          <text class="muted">vs</text> {{item.opp}}
-        </view>
-        <view class="muted">{{item.day}} · {{item.type == 'singles' ? t.singles : t.doubles}}</view>
-      </view>
-      <view class="center">
-        <view class="bold">{{item.score}}</view>
-        <view class="small {{item.delta > 0 ? 'up' : item.delta < 0 ? 'down' : 'muted'}}">{{item.deltaText}}</view>
-      </view>
-    </view>
-    <view class="empty" wx:if="{{!matches.length}}">{{t.noGames}}</view>
-  </view>
-
-  <view class="card" wx:if="{{self && !userId}}">
-    <view class="field">
-      <text class="label">🌐 {{t.language}}</text>
-      <picker range="{{langNames}}" value="{{langIdx}}" bindchange="onLang">
-        <view class="lang">{{langNames[langIdx]}} ›</view>
-      </picker>
-    </view>
   </view>
 </view>

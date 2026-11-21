@@ -1,0 +1,38 @@
+<view class="page">
+  <block wx:if="{{topic == 'levels'}}">
+    <view class="card p">{{t.lv_intro}}</view>
+    <view class="card">
+      <view class="list-item" wx:for="{{levels}}" wx:key="lv">
+        <text class="lvnum">{{item.lv}}</text>
+        <text class="grow">{{item.desc}}</text>
+      </view>
+    </view>
+    <view class="card">
+      <view class="h">{{t.lv_titles}}</view>
+      <view class="p">{{t.lv_titles_d}}</view>
+      <view class="titles">
+        <view class="ti" wx:for="{{titles}}" wx:key="name"><text class="lv">{{item.name}}</text><text class="muted">{{item.range}}</text></view>
+      </view>
+    </view>
+  </block>
+
+  <block wx:elif="{{topic == 'formats'}}">
+    <view class="card p">{{t.f_intro}}</view>
+    <view class="card">
+      <view class="list-item" wx:for="{{modes}}" wx:key="name">
+        <view class="grow"><view class="bold">{{item.name}}</view><view class="muted">{{item.desc}}</view></view>
+      </view>
+    </view>
+    <view class="card p">💡 {{t.f_tip}}</view>
+  </block>
+
+  <block wx:else>
+    <view class="card">
+      <view class="step" wx:for="{{steps}}" wx:key="*this"><text class="no">{{index + 1}}</text><text class="grow">{{item}}</text></view>
+    </view>
+    <view class="card">
+      <view class="h">{{t.g_adminTitle}}</view>
+      <view class="p">{{t.g_admin}}</view>
+    </view>
+  </block>
+</view>
