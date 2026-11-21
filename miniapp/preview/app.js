@@ -519,7 +519,7 @@ function viewMe(t) {
     <div class="note">${t.finishedOnly}</div>
   </div>
   <div class="card mgrid">
-    ${cell('myEvents', '📅', 'g', t.menu_events)}
+    ${cell('myEvents', BALL_SVG, 'ball', t.menu_events)}
     ${cell('myMatches', '🏓', 'o', t.menu_matches)}
     ${cell('player', '📈', 'b', t.menu_rating, `data-id="${ME}"`)}
     ${cell('guide', '🏅', 'g', t.menu_levels, 'data-topic="levels"')}

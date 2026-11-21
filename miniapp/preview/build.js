@@ -54,6 +54,7 @@ ${runtime}
 ${bundle}
 // 预览代码放进独立作用域，避免和 window.top 等浏览器全局变量冲突
 (function () {
+const BALL_SVG = ${JSON.stringify(read('preview/pickleball.svg').replace(/<!--[\s\S]*?-->/g, '').replace(/\s*\n\s*/g, ''))};
 ${read('preview/app.js')}
 })();
 </script>

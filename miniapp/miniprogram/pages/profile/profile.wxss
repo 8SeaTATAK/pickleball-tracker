@@ -38,3 +38,4 @@ button.li.plain { width: 100%; display: flex; padding: 28rpx 0; }
 .li-ic { font-size: 34rpx; }
 .arrow { color: #b3b7ae; font-size: 36rpx; }
 .page { padding-bottom: calc(140rpx + env(safe-area-inset-bottom)); }
+.ic.ball { background: none; width: 76rpx; height: 76rpx; }

@@ -265,3 +265,7 @@ select.ev-input { text-align-last: right; cursor: pointer; }
 .ev-input:disabled { opacity: 0.7; }
 .pen { color: var(--muted); font-size: 13px; }
 .ehint { padding: 0 0 10px; text-align: right; }
+
+/* 我的活动：俱乐部风格的匹克球图标 */
+.ic.ball { background: none; }
+.ic.ball svg { width: 40px; height: 40px; display: block; }
