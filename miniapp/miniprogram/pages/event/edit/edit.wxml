@@ -1,48 +1,48 @@
 <view class="page">
   <view class="card">
     <view class="field">
-      <text class="label">活动名称</text>
-      <input placeholder="例如：周六上午双打局" placeholder-class="placeholder" maxlength="40" value="{{title}}" data-k="title" bindinput="onInput" />
+      <text class="label">{{t.eventName}}</text>
+      <input placeholder="{{t.eventNamePh}}" placeholder-class="placeholder" maxlength="40" value="{{title}}" data-k="title" bindinput="onInput" />
     </view>
     <view class="field">
-      <text class="label">日期</text>
+      <text class="label">{{t.date}}</text>
       <picker mode="date" value="{{day}}" start="{{eventId ? '' : today}}" data-k="day" bindchange="onInput">
         <view>{{day}} ›</view>
       </picker>
     </view>
     <view class="field">
-      <text class="label">时间</text>
+      <text class="label">{{t.time}}</text>
       <picker mode="time" value="{{start}}" data-k="start" bindchange="onInput"><view>{{start}}</view></picker>
-      <text class="muted dash">至</text>
+      <text class="muted dash">{{t.to}}</text>
       <picker mode="time" value="{{end}}" data-k="end" bindchange="onInput"><view>{{end}}</view></picker>
     </view>
     <view class="field">
-      <text class="label">地点</text>
-      <input placeholder="场馆 / 场地号" placeholder-class="placeholder" maxlength="60" value="{{location}}" data-k="location" bindinput="onInput" />
+      <text class="label">{{t.location}}</text>
+      <input placeholder="{{t.locationPh}}" placeholder-class="placeholder" maxlength="60" value="{{location}}" data-k="location" bindinput="onInput" />
     </view>
   </view>
 
   <view class="card">
     <view class="field">
-      <text class="label">场地数</text>
+      <text class="label">{{t.courts}}</text>
       <input type="number" value="{{courts}}" data-k="courts" bindinput="onInput" />
-      <text class="muted">片</text>
+      <text class="muted">{{t.courtsUnit}}</text>
     </view>
     <view class="field">
-      <text class="label">人数上限</text>
+      <text class="label">{{t.capacity}}</text>
       <input type="number" value="{{capacity}}" data-k="capacity" bindinput="onInput" />
-      <text class="muted">人，满员后自动候补</text>
+      <text class="muted unit">{{t.capacityUnit}}</text>
     </view>
     <view class="field">
-      <text class="label">费用</text>
+      <text class="label">{{t.fee}}</text>
       <input type="number" value="{{fee}}" data-k="fee" bindinput="onInput" />
-      <text class="muted">元/人</text>
+      <text class="muted">{{t.feeUnit}}</text>
     </view>
     <view class="field">
-      <text class="label">备注</text>
-      <textarea placeholder="水平要求、自带球、AA 方式…" placeholder-class="placeholder" maxlength="500" value="{{note}}" data-k="note" bindinput="onInput" />
+      <text class="label">{{t.note}}</text>
+      <textarea placeholder="{{t.notePh}}" placeholder-class="placeholder" maxlength="500" value="{{note}}" data-k="note" bindinput="onInput" />
     </view>
   </view>
 
-  <button class="btn" bindtap="save" disabled="{{saving}}">{{eventId ? '保存' : '发布活动'}}</button>
+  <button class="btn" bindtap="save" disabled="{{saving}}">{{eventId ? t.save : t.publish}}</button>
 </view>

@@ -1,18 +1,19 @@
 const api = require('../../../utils/api');
 const fmt = require('../../../utils/fmt');
 const { predict } = require('../../../utils/predict');
+const i18n = require('../../../utils/i18n');
 const app = getApp();
 
-const MODES = [
-  { key: 'rotation', name: '双打轮转', desc: '上场次数平均，搭档和对手尽量不重复' },
-  { key: 'balanced', name: '双打均衡', desc: '在轮转基础上，让两队评分尽量接近' },
-  { key: 'fixed', name: '固定搭档循环', desc: '按报名顺序两两组队，队与队单循环' },
-  { key: 'singles', name: '单打轮转', desc: '1v1，上场次数平均，对手尽量不重复' },
-  { key: 'singlesRR', name: '单打循环', desc: '每两人之间打一场' },
-];
+const MODE_KEYS = ['rotation', 'balanced', 'fixed', 'singles', 'singlesRR'];
+const modes = () => MODE_KEYS.map((key) => ({ key, name: i18n.t('mode_' + key), desc: i18n.t('mode_' + key + '_d') }));
+
+// 系统弹窗按钮文字跟随小程序语言
+const modal = (o) => wx.showModal({ confirmText: i18n.t('ok'), cancelText: i18n.t('cancel'), ...o });
 
 Page({
   data: {
+    t: {},
+    currency: 'A$',
     id: '',
     tab: 'players',
     loaded: false,
@@ -34,7 +35,7 @@ Page({
     statusText: '',
     // 生成对阵
     showGen: false,
-    modes: MODES,
+    modes: [],
     modeIdx: 0,
     genRounds: '6',
     genCourts: '2',
@@ -53,11 +54,11 @@ Page({
   },
 
   onLoad(q) {
-    this.setData({ id: q.id });
+    this.setData({ id: q.id, t: i18n.dict(), modes: modes() });
   },
 
   onShow() {
-    this.load();
+    this.load().catch(() => {});
   },
 
   onPullDownRefresh() {
@@ -112,7 +113,8 @@ Page({
       doneCount: r.matches.filter((m) => m.status === 'done').length,
       totalCount: r.matches.length,
       when: fmt.range(r.event.startTime, r.event.endTime),
-      statusText: fmt.STATUS[r.event.status],
+      statusText: fmt.status(r.event.status),
+      currency: (r.club && r.club.settings && r.club.settings.currency) || 'A$',
       genCourts: String(r.event.courts),
       names: r.joined.map((p) => p.nickName),
       tab: this.data.tab === 'players' && r.matches.length && !this._tabTouched ? 'matches' : this.data.tab,
@@ -137,20 +139,20 @@ Page({
   // ---------- 报名 ----------
   async signup() {
     if (!this.data.myRole) {
-      await api.call('joinClub', { clubId: this.data.event.clubId }, { loading: '加入俱乐部' });
+      await api.call('joinClub', { clubId: this.data.event.clubId }, { loading: 'joiningClub' });
     }
-    const { status } = await api.call('signup', { eventId: this.data.id }, { loading: '报名中' });
-    wx.showToast({ title: status === 'joined' ? '报名成功' : '已满员，进入候补', icon: status === 'joined' ? 'success' : 'none' });
+    const { status } = await api.call('signup', { eventId: this.data.id }, { loading: 'signingUp' });
+    wx.showToast({ title: i18n.t(status === 'joined' ? 'signupOk' : 'signupFull'), icon: status === 'joined' ? 'success' : 'none' });
     await this.load();
   },
 
   cancel() {
-    wx.showModal({
-      title: '取消报名',
-      content: '确定取消？候补的球友会自动递补。',
+    modal({
+      title: i18n.t('cancelSignup'),
+      content: i18n.t('cancelConfirm'),
       success: api.safe(async (r) => {
         if (!r.confirm) return;
-        await api.call('cancelSignup', { eventId: this.data.id }, { loading: '处理中' });
+        await api.call('cancelSignup', { eventId: this.data.id }, { loading: 'processing' });
         this.load();
       }),
     });
@@ -160,15 +162,15 @@ Page({
     const { id, name } = e.currentTarget.dataset;
     if (!this.data.isAdmin) return wx.navigateTo({ url: '/pages/player/player?id=' + id });
     wx.showActionSheet({
-      itemList: ['查看资料', '取消该球员报名'],
+      itemList: [i18n.t('viewProfile'), i18n.t('cancelPlayer')],
       success: (r) => {
         if (r.tapIndex === 0) return wx.navigateTo({ url: '/pages/player/player?id=' + id });
-        wx.showModal({
-          title: '取消报名',
-          content: `取消「${name}」的报名？`,
+        modal({
+          title: i18n.t('cancelSignup'),
+          content: i18n.t('cancelPlayerConfirm', name),
           success: api.safe(async (m) => {
             if (!m.confirm) return;
-            await api.call('cancelSignup', { eventId: this.data.id, userId: id }, { loading: '处理中' });
+            await api.call('cancelSignup', { eventId: this.data.id, userId: id }, { loading: 'processing' });
             this.load();
           }),
         });
@@ -178,10 +180,10 @@ Page({
 
   // 管理员代报名：从俱乐部成员里选
   async proxySignup() {
-    const { members } = await api.call('getClub', { clubId: this.data.event.clubId }, { loading: '加载成员' });
+    const { members } = await api.call('getClub', { clubId: this.data.event.clubId }, { loading: 'loadingMembers' });
     const taken = new Set([...this.data.joined, ...this.data.waitlist].map((p) => p._id));
     const candidates = members.filter((m) => !taken.has(m._id));
-    if (!candidates.length) return wx.showToast({ title: '成员都已报名', icon: 'none' });
+    if (!candidates.length) return wx.showToast({ title: i18n.t('allSigned'), icon: 'none' });
     this.setData({ candidates });
     // showActionSheet 最多 6 项，用 picker 弹层更通用
     this.setData({ showProxy: true, proxyIdx: 0, candidateNames: candidates.map((c) => c.nickName) });
@@ -195,8 +197,8 @@ Page({
   async confirmProxy() {
     const c = this.data.candidates[this.data.proxyIdx];
     if (!c) return;
-    const { status } = await api.call('signup', { eventId: this.data.id, userId: c._id }, { loading: '报名中' });
-    wx.showToast({ title: status === 'joined' ? `已为${c.nickName}报名` : `${c.nickName}进入候补`, icon: 'none' });
+    const { status } = await api.call('signup', { eventId: this.data.id, userId: c._id }, { loading: 'signingUp' });
+    wx.showToast({ title: i18n.t(status === 'joined' ? 'signedFor' : 'waitlistedFor', c.nickName), icon: 'none' });
     // 从候选里去掉刚报名的人，方便连续代报名
     const candidates = this.data.candidates.filter((x) => x._id !== c._id);
     this.setData({
@@ -210,7 +212,7 @@ Page({
 
   // ---------- 生成对阵 ----------
   openGen() {
-    if (this.data.joined.length < 2) return wx.showToast({ title: '报名人数不足', icon: 'none' });
+    if (this.data.joined.length < 2) return wx.showToast({ title: i18n.t('notEnough'), icon: 'none' });
     this.setData({ showGen: true });
   },
   closeGen() {
@@ -225,27 +227,27 @@ Page({
   generate() {
     const pending = this.data.rounds.some((r) => r.matches.some((m) => m.status !== 'done'));
     const run = async () => {
-      const mode = MODES[this.data.modeIdx].key;
+      const mode = MODE_KEYS[this.data.modeIdx];
       const res = await api.call(
         'generateSchedule',
         { eventId: this.data.id, mode, rounds: Number(this.data.genRounds), courts: Number(this.data.genCourts) },
-        { loading: '生成中' }
+        { loading: 'generating' }
       );
       this.setData({ showGen: false, tab: 'matches' });
-      wx.showToast({ title: `已生成 ${res.count} 场`, icon: 'none' });
+      wx.showToast({ title: i18n.t('generatedN', res.count), icon: 'none' });
       await this.load();
     };
     if (!pending) return run();
-    wx.showModal({
-      title: '重新生成',
-      content: '未录入比分的对局会被替换，已完赛的保留。继续？',
+    modal({
+      title: i18n.t('regenTitle'),
+      content: i18n.t('regenConfirm'),
       success: (r) => r.confirm && run().catch(() => {}),
     });
   },
 
   // ---------- 手动加一局 ----------
   openAdd() {
-    if (this.data.joined.length < 2) return wx.showToast({ title: '报名人数不足', icon: 'none' });
+    if (this.data.joined.length < 2) return wx.showToast({ title: i18n.t('notEnough'), icon: 'none' });
     this.setData({ showAdd: true, addType: this.data.joined.length >= 4 ? 'doubles' : 'singles', pick: [0, 1, 2, 3] });
   },
   closeAdd() {
@@ -263,7 +265,7 @@ Page({
     const doubles = this.data.addType === 'doubles';
     const teamA = doubles ? [ids[p[0]], ids[p[1]]] : [ids[p[0]]];
     const teamB = doubles ? [ids[p[2]], ids[p[3]]] : [ids[p[1]]];
-    await api.call('addMatch', { eventId: this.data.id, teamA, teamB }, { loading: '添加中' });
+    await api.call('addMatch', { eventId: this.data.id, teamA, teamB }, { loading: 'adding' });
     this.setData({ showAdd: false, tab: 'matches' });
     await this.load();
   },
@@ -298,23 +300,23 @@ Page({
   async submitScore() {
     const a = Number(this.data.scoreA);
     const b = Number(this.data.scoreB);
-    if (this.data.scoreA === '' || this.data.scoreB === '') return wx.showToast({ title: '请填写双方比分', icon: 'none' });
-    if (a === b) return wx.showToast({ title: '比分不能打平', icon: 'none' });
-    const res = await api.call('submitScore', { matchId: this.data.scoring._id, scoreA: a, scoreB: b }, { loading: '提交中' });
+    if (this.data.scoreA === '' || this.data.scoreB === '') return wx.showToast({ title: i18n.t('fillBoth'), icon: 'none' });
+    if (a === b) return wx.showToast({ title: i18n.t('err_scoreTie'), icon: 'none' });
+    const res = await api.call('submitScore', { matchId: this.data.scoring._id, scoreA: a, scoreB: b }, { loading: 'submitting' });
     this.setData({ showScore: false });
     const uid = app.globalData.user._id;
     const mine = res.changes.find((c) => c.id === uid);
-    wx.showToast({ title: mine ? `评分 ${fmt.delta(mine.delta)}` : '已录入', icon: 'none' });
+    wx.showToast({ title: mine ? i18n.t('ratingChange', fmt.delta(mine.delta)) : i18n.t('recorded'), icon: 'none' });
     await this.load();
   },
   deleteMatch() {
     const m = this.data.scoring;
-    wx.showModal({
-      title: '删除对局',
-      content: m.status === 'done' ? '删除后会撤销这一局对评分的影响。确定删除？' : '确定删除这一局？',
+    modal({
+      title: i18n.t('deleteMatchTitle'),
+      content: i18n.t(m.status === 'done' ? 'deleteDone' : 'deletePending'),
       success: api.safe(async (r) => {
         if (!r.confirm) return;
-        await api.call('deleteMatch', { matchId: m._id }, { loading: '删除中' });
+        await api.call('deleteMatch', { matchId: m._id }, { loading: 'deleting' });
         this.setData({ showScore: false });
         this.load();
       }),
@@ -325,26 +327,26 @@ Page({
   manage() {
     const ev = this.data.event;
     const items = [
-      { text: '编辑活动', fn: () => wx.navigateTo({ url: '/pages/event/edit/edit?id=' + ev._id }) },
-      { text: '代成员报名', fn: () => this.proxySignup() },
+      { text: i18n.t('editEvent'), fn: () => wx.navigateTo({ url: '/pages/event/edit/edit?id=' + ev._id }) },
+      { text: i18n.t('proxyTitle'), fn: () => this.proxySignup() },
       ev.status === 'finished'
-        ? { text: '重新开放', fn: () => this.setStatus('playing') }
-        : { text: '结束活动', fn: () => this.setStatus('finished') },
-      { text: '删除活动', fn: () => this.removeEvent() },
+        ? { text: i18n.t('reopen'), fn: () => this.setStatus('playing') }
+        : { text: i18n.t('finishEvent'), fn: () => this.setStatus('finished') },
+      { text: i18n.t('deleteEvent'), fn: () => this.removeEvent() },
     ];
     wx.showActionSheet({ itemList: items.map((i) => i.text), success: (r) => items[r.tapIndex].fn() });
   },
   async setStatus(status) {
-    await api.call('updateEvent', { eventId: this.data.id, status }, { loading: '处理中' });
+    await api.call('updateEvent', { eventId: this.data.id, status }, { loading: 'processing' });
     await this.load();
   },
   removeEvent() {
-    wx.showModal({
-      title: '删除活动',
-      content: '报名和未完赛对局会一起删除。',
+    modal({
+      title: i18n.t('deleteEvent'),
+      content: i18n.t('deleteEventConfirm'),
       success: api.safe(async (r) => {
         if (!r.confirm) return;
-        await api.call('deleteEvent', { eventId: this.data.id }, { loading: '删除中' });
+        await api.call('deleteEvent', { eventId: this.data.id }, { loading: 'deleting' });
         wx.navigateBack();
       }),
     });
@@ -353,7 +355,7 @@ Page({
   onShareAppMessage() {
     const e = this.data.event;
     return {
-      title: e ? `${e.title} · ${this.data.when} 报名中` : '匹克球活动',
+      title: e ? i18n.t('shareEvent', e.title, this.data.when) : i18n.t('eventFallback'),
       path: '/pages/event/detail/detail?id=' + this.data.id,
     };
   },

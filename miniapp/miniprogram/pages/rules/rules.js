@@ -1,4 +1,5 @@
 const { expectedShare } = require('../../utils/predict');
+const i18n = require('../../utils/i18n');
 
 // 示例表：评分差 → 期望得分率 → 11 分制预测比分
 const rows = [0, 0.25, 0.5, 1, 1.5, 2].map((d) => {
@@ -11,8 +12,12 @@ const rows = [0, 0.25, 0.5, 1, 1.5, 2].map((d) => {
 });
 
 Page({
-  data: { rows },
+  data: { rows, t: {} },
+  onLoad() {
+    this.setData({ t: i18n.dict() });
+    wx.setNavigationBarTitle({ title: i18n.t('r_nav') });
+  },
   onShareAppMessage() {
-    return { title: '匹克球助手 · 评分规则', path: '/pages/rules/rules' };
+    return { title: i18n.t('appName') + ' · ' + i18n.t('r_nav'), path: '/pages/rules/rules' };
   },
 });

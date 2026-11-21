@@ -1,3 +1,4 @@
+<wxs src="../../utils/i18n.wxs" module="i" />
 <view class="page">
   <!-- 我的评分 -->
   <view class="card hero" wx:if="{{user}}" bindtap="goProfile">
@@ -8,24 +9,24 @@
       </view>
       <view class="grow">
         <view class="bold">{{user.nickName}}</view>
-        <view class="muted" wx:if="{{!user.leveled && user.doubles.games == 0}}">点这里设置你的起始水平 ›</view>
-        <view class="muted" wx:else>双打 {{user.doubles.games}} 场 · 单打 {{user.singles.games}} 场</view>
+        <view class="muted" wx:if="{{!user.leveled && user.doubles.games == 0}}">{{t.setLevelHint}}</view>
+        <view class="muted" wx:else>{{i.f(t.gamesSummary, user.doubles.games, user.singles.games)}}</view>
       </view>
     </view>
     <view class="row ratings">
       <view class="grow">
-        <view class="muted">双打评分</view>
+        <view class="muted">{{t.doublesRating}}</view>
         <view class="rating-big">{{user.doublesText}}</view>
       </view>
       <view class="grow">
-        <view class="muted">单打评分</view>
+        <view class="muted">{{t.singlesRating}}</view>
         <view class="rating-big">{{user.singlesText}}</view>
       </view>
     </view>
   </view>
 
   <view class="section-title">
-    <text>近期活动</text>
+    <text>{{t.upcoming}}</text>
   </view>
   <view class="card" wx:if="{{events.length}}">
     <view class="list-item" wx:for="{{events}}" wx:key="_id" data-id="{{item._id}}" bindtap="goEvent">
@@ -41,37 +42,37 @@
       <view class="muted">{{item.joinedCount}}/{{item.capacity}}</view>
     </view>
   </view>
-  <view class="card empty" wx:elif="{{loaded}}">暂无活动，去俱乐部看看吧</view>
+  <view class="card empty" wx:elif="{{loaded}}">{{t.noEvents}}</view>
 
   <view class="section-title">
-    <text>我的俱乐部</text>
-    <text class="link" bindtap="goRules">评分规则</text>
+    <text>{{t.myClubs}}</text>
+    <text class="link" bindtap="goRules">{{t.rulesLink}}</text>
   </view>
   <view class="card" wx:if="{{clubs.length}}">
     <view class="list-item" wx:for="{{clubs}}" wx:key="_id" data-id="{{item._id}}" bindtap="goClub">
       <view class="avatar">{{item.name[0]}}</view>
       <view class="grow">
         <view class="bold ellipsis">{{item.name}}</view>
-        <view class="muted">{{item.city ? item.city + ' · ' : ''}}{{item.memberCount}} 名成员</view>
+        <view class="muted">{{item.city ? item.city + ' · ' : ''}}{{i.f(t.membersN, item.memberCount)}}</view>
       </view>
-      <text class="tag" wx:if="{{item.myRole != 'member'}}">{{item.myRole == 'owner' ? '创建者' : '管理员'}}</text>
+      <text class="tag" wx:if="{{item.roleText}}">{{item.roleText}}</text>
     </view>
   </view>
-  <view class="card empty" wx:elif="{{loaded}}">还没有加入俱乐部</view>
+  <view class="card empty" wx:elif="{{loaded}}">{{t.noClubs}}</view>
 
   <view class="btn-row">
-    <button class="btn" bindtap="goCreate">创建俱乐部</button>
-    <button class="btn ghost" bindtap="openJoin">邀请码加入</button>
+    <button class="btn" bindtap="goCreate">{{t.createClub}}</button>
+    <button class="btn ghost" bindtap="openJoin">{{t.joinByCode}}</button>
   </view>
 </view>
 
 <view class="mask" wx:if="{{showJoin}}" bindtap="closeJoin">
   <view class="sheet" catchtap="noop">
-    <view class="sheet-title">输入俱乐部邀请码</view>
-    <input class="code-input" placeholder="6 位邀请码" maxlength="6" value="{{code}}" bindinput="onCode" focus />
+    <view class="sheet-title">{{t.enterCode}}</view>
+    <input class="code-input" placeholder="{{t.codePh}}" maxlength="6" value="{{code}}" bindinput="onCode" focus />
     <view class="btn-row">
-      <button class="btn ghost" bindtap="closeJoin">取消</button>
-      <button class="btn" bindtap="join" disabled="{{!code}}">加入</button>
+      <button class="btn ghost" bindtap="closeJoin">{{t.cancel}}</button>
+      <button class="btn" bindtap="join" disabled="{{!code}}">{{t.join}}</button>
     </view>
   </view>
 </view>

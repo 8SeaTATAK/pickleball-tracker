@@ -1,19 +1,16 @@
 const api = require('../../utils/api');
 const fmt = require('../../utils/fmt');
+const i18n = require('../../utils/i18n');
 const app = getApp();
 
-const LEVEL_DESC = {
-  2.0: '刚接触，正在学规则和基本击球',
-  2.5: '能连续对拉，开始练习发球和接发',
-  3.0: '稳定发接发，会打 dink，偶尔失误较多',
-  3.5: '能控制落点，开始进攻第三拍、上网配合',
-  4.0: '稳定的 dink 对抗与重置，战术意识清晰',
-  4.5: '失误少，能打出变化和速度，常参加比赛',
-  5.0: '高水平赛事选手',
-};
+// 水平描述的词典键：2.0 → level_2，2.5 → level_25
+const levelKey = (l) => 'level_' + String(l).replace('.', '').replace(/0$/, '');
 
 module.exports = () => ({
   data: {
+    t: {},
+    langNames: i18n.LANG_NAMES,
+    langIdx: 0,
     self: true,
     userId: '',
     user: null,
@@ -29,11 +26,16 @@ module.exports = () => ({
   },
 
   onLoad(q) {
+    this.setData({ t: i18n.dict(), langIdx: i18n.LANGS.indexOf(i18n.getLang()) });
     if (q.id) this.setData({ userId: q.id });
   },
 
   onShow() {
-    this.load();
+    if (!this.data.userId) {
+      wx.setNavigationBarTitle({ title: i18n.t('tabMe') });
+      i18n.applyTabBar();
+    }
+    this.load().catch(() => {});
   },
 
   onPullDownRefresh() {
@@ -52,6 +54,7 @@ module.exports = () => ({
       winRate: b.games ? Math.round((b.wins / b.games) * 100) : 0,
       provisional: b.games < 6,
     });
+    const sep = i18n.getLang() === 'zh' ? '、' : ', ';
     this._history = r.history;
     this.setData({
       self,
@@ -59,7 +62,7 @@ module.exports = () => ({
       blocks: { doubles: block(r.user.doubles), singles: block(r.user.singles) },
       canLevel: self && !r.user.doubles.games && !r.user.singles.games,
       levels: r.levels,
-      levelNames: r.levels.map((l) => `${l.toFixed(1)}  ${LEVEL_DESC[l] || ''}`),
+      levelNames: r.levels.map((l) => `${l.toFixed(1)}  ${i18n.t(levelKey(l))}`),
       levelIdx: Math.max(0, r.levels.indexOf(r.user.doubles.rating)),
       matches: r.matches.map((m) => {
         const won = m.mySide === 'A' ? m.scoreA > m.scoreB : m.scoreB > m.scoreA;
@@ -69,12 +72,12 @@ module.exports = () => ({
           _id: m._id,
           won,
           type: m.type,
-          partner: mine.filter((p) => p._id !== userId).map((p) => p.nickName).join('、'),
-          opp: opp.map((p) => p.nickName).join('、'),
+          partner: mine.filter((p) => p._id !== userId).map((p) => p.nickName).join(sep),
+          opp: opp.map((p) => p.nickName).join(sep),
           score: m.mySide === 'A' ? `${m.scoreA}:${m.scoreB}` : `${m.scoreB}:${m.scoreA}`,
           delta: m.myDelta,
           deltaText: fmt.delta(m.myDelta),
-          day: fmt.date(m.playedAt).slice(5),
+          day: fmt.shortDate(m.playedAt),
         };
       }),
     });
@@ -147,7 +150,7 @@ module.exports = () => ({
   // ---------- 编辑资料（仅本人） ----------
   async onChooseAvatar(e) {
     const tmp = e.detail.avatarUrl;
-    wx.showLoading({ title: '上传中', mask: true });
+    wx.showLoading({ title: i18n.t('uploading'), mask: true });
     try {
       const up = await wx.cloud.uploadFile({
         cloudPath: `avatars/${this.data.user._id}-${Date.now()}.jpg`,
@@ -168,17 +171,25 @@ module.exports = () => ({
     const name = (e.detail.value || '').trim();
     this.setData({ editingName: false });
     if (!name || name === this.data.user.nickName) return;
-    await api.call('updateProfile', { nickName: name }, { loading: '保存中' });
+    await api.call('updateProfile', { nickName: name }, { loading: 'saving' });
     await app.ensureLogin(true);
     await this.load();
   },
 
   async onLevel(e) {
     const lv = this.data.levels[Number(e.detail.value)];
-    await api.call('updateProfile', { level: lv }, { loading: '保存中' });
+    await api.call('updateProfile', { level: lv }, { loading: 'saving' });
     await app.ensureLogin(true);
-    wx.showToast({ title: `起始评分 ${lv.toFixed(3)}`, icon: 'none' });
+    wx.showToast({ title: i18n.t('startRatingSet', lv.toFixed(3)), icon: 'none' });
     await this.load();
+  },
+
+  // 切换语言：保存后重启到首页，所有页面和 tab 栏按新语言重新渲染
+  onLang(e) {
+    const lang = i18n.LANGS[Number(e.detail.value)];
+    if (lang === i18n.getLang()) return;
+    i18n.setLang(lang);
+    wx.reLaunch({ url: '/pages/index/index' });
   },
 
   goRules() {
@@ -188,7 +199,7 @@ module.exports = () => ({
   onShareAppMessage() {
     const u = this.data.user;
     return {
-      title: u ? `${u.nickName} 的匹克球评分 ${fmt.rating(u.doubles.rating)}` : '匹克球助手',
+      title: u ? i18n.t('shareProfile', u.nickName, fmt.rating(u.doubles.rating)) : i18n.t('appName'),
       path: '/pages/player/player?id=' + (u ? u._id : ''),
     };
   },

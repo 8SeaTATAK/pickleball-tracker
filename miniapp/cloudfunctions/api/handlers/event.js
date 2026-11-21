@@ -6,22 +6,22 @@ const signupId = (eventId, userId) => `${eventId}_${userId}`;
 
 async function loadEvent(ctx, eventId) {
   const ev = await getDoc(ctx.db, 'events', eventId);
-  if (!ev) fail('活动不存在');
+  if (!ev) fail('eventNotFound');
   return ev;
 }
 
 function eventFields(p, partial) {
   const d = {};
   const has = (k) => !partial || p[k] != null;
-  if (has('title')) d.title = str(p.title, 40, '活动名称', true);
-  if (has('location')) d.location = str(p.location, 60, '地点');
-  if (has('note')) d.note = str(p.note, 500, '备注');
-  if (has('startTime')) d.startTime = int(p.startTime, 0, 4102444800000, '开始时间');
-  if (has('endTime')) d.endTime = int(p.endTime, 0, 4102444800000, '结束时间');
-  if (has('courts')) d.courts = int(p.courts, 1, 30, '场地数');
-  if (has('capacity')) d.capacity = int(p.capacity, 2, 200, '人数上限');
-  if (has('fee')) d.fee = int(p.fee, 0, 100000, '费用');
-  if (d.startTime != null && d.endTime != null && d.endTime <= d.startTime) fail('结束时间须晚于开始时间');
+  if (has('title')) d.title = str(p.title, 40, 'title', true);
+  if (has('location')) d.location = str(p.location, 60, 'location');
+  if (has('note')) d.note = str(p.note, 500, 'note');
+  if (has('startTime')) d.startTime = int(p.startTime, 0, 4102444800000, 'startTime');
+  if (has('endTime')) d.endTime = int(p.endTime, 0, 4102444800000, 'endTime');
+  if (has('courts')) d.courts = int(p.courts, 1, 30, 'courts');
+  if (has('capacity')) d.capacity = int(p.capacity, 2, 200, 'capacity');
+  if (has('fee')) d.fee = int(p.fee, 0, 100000, 'fee');
+  if (d.startTime != null && d.endTime != null && d.endTime <= d.startTime) fail('endBeforeStart');
   return d;
 }
 
@@ -44,12 +44,12 @@ async function updateEvent(ctx, p) {
   await requireAdmin(ctx, ev.clubId);
   const data = eventFields(p, true);
   if (p.status != null) {
-    if (!['open', 'playing', 'finished'].includes(p.status)) fail('无效状态');
+    if (!['open', 'playing', 'finished'].includes(p.status)) fail('invalidStatus');
     data.status = p.status;
   }
   const start = data.startTime != null ? data.startTime : ev.startTime;
   const end = data.endTime != null ? data.endTime : ev.endTime;
-  if (end <= start) fail('结束时间须晚于开始时间');
+  if (end <= start) fail('endBeforeStart');
   await ctx.db.collection('events').doc(ev._id).update({ data });
   return {};
 }
@@ -59,7 +59,7 @@ async function deleteEvent(ctx, { eventId }) {
   const ev = await loadEvent(ctx, eventId);
   await requireAdmin(ctx, ev.clubId);
   const done = await db.collection('matches').where({ eventId, status: 'done' }).count();
-  if (done.total) fail('已有完赛记录的活动不能删除，可将其标记为已结束');
+  if (done.total) fail('eventHasResults');
   await db.collection('matches').where({ eventId }).remove();
   await db.collection('signups').where({ eventId }).remove();
   await db.collection('events').doc(eventId).remove();
@@ -126,11 +126,11 @@ async function getEvent(ctx, { eventId }) {
 async function signup(ctx, { eventId, userId }) {
   const { db } = ctx;
   const ev = await loadEvent(ctx, eventId);
-  if (ev.status === 'finished') fail('活动已结束');
+  if (ev.status === 'finished') fail('eventFinished');
   const target = userId || ctx.openid;
   if (target !== ctx.openid) await requireAdmin(ctx, ev.clubId);
   else await requireMember(ctx, ev.clubId);
-  if (!(await getMember(ctx, ev.clubId, target))) fail('该球员不是俱乐部成员');
+  if (!(await getMember(ctx, ev.clubId, target))) fail('notClubMember');
 
   const id = signupId(eventId, target);
   const existing = await getDoc(db, 'signups', id);

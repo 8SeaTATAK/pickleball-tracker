@@ -1,15 +1,18 @@
 const api = require('../../../utils/api');
 const fmt = require('../../../utils/fmt');
+const i18n = require('../../../utils/i18n');
 const app = getApp();
 
-const LEVELS = ['不设置（3.500）', '2.0', '2.5', '3.0', '3.5', '4.0', '4.5', '5.0'];
+const LEVELS = [null, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0];
 
 Page({
   data: {
+    t: {},
     id: '',
     tab: 'events',
     club: null,
     myRole: null,
+    roleText: '',
     isAdmin: false,
     members: [],
     events: [],
@@ -19,19 +22,26 @@ Page({
     showGuest: false,
     guestName: '',
     guestLevel: 0,
-    levels: LEVELS,
+    levels: [],
   },
 
   onLoad(q) {
-    this.setData({ id: q.id, tab: q.tab || 'events' });
+    this.setData({
+      t: i18n.dict(),
+      id: q.id,
+      tab: q.tab || 'events',
+      levels: LEVELS.map((l) => (l == null ? i18n.t('levelDefault') : l.toFixed(1))),
+    });
   },
 
   onShow() {
-    this.load();
+    this.load().catch(() => {});
   },
 
   onPullDownRefresh() {
-    this.load().finally(() => wx.stopPullDownRefresh());
+    this.load()
+      .catch(() => {})
+      .finally(() => wx.stopPullDownRefresh());
   },
 
   async load() {
@@ -41,10 +51,11 @@ Page({
     this.setData({
       club: res.club,
       myRole: res.myRole,
+      roleText: res.myRole && res.myRole !== 'member' ? fmt.role(res.myRole) : '',
       isAdmin: res.myRole === 'owner' || res.myRole === 'admin',
       members: res.members.map((m) => ({
         ...m,
-        roleText: m.role === 'member' ? '' : fmt.ROLE[m.role],
+        roleText: m.role === 'member' ? '' : fmt.role(m.role),
         ratingText: fmt.ratingLabel(m.doubles),
       })),
     });
@@ -56,7 +67,7 @@ Page({
   async loadEvents() {
     const list = await api.call('listEvents', { clubId: this.data.id });
     this.setData({
-      events: list.map((e) => ({ ...e, when: fmt.range(e.startTime, e.endTime), statusText: fmt.STATUS[e.status] })),
+      events: list.map((e) => ({ ...e, when: fmt.range(e.startTime, e.endTime), statusText: fmt.status(e.status) })),
     });
   },
 
@@ -70,22 +81,24 @@ Page({
   },
 
   switchPeriod(e) {
-    this.setData({ period: e.currentTarget.dataset.p }, () => this.loadBoard());
+    this.setData({ period: e.currentTarget.dataset.p }, () => this.loadBoard().catch(() => {}));
   },
 
   async join() {
-    await api.call('joinClub', { clubId: this.data.id }, { loading: '加入中' });
-    wx.showToast({ title: '已加入' });
+    await api.call('joinClub', { clubId: this.data.id }, { loading: 'joining' });
+    wx.showToast({ title: i18n.t('joined') });
     await this.load();
   },
 
   leave() {
     wx.showModal({
-      title: '退出俱乐部',
-      content: '退出后历史比赛和评分会保留。确定退出？',
+      title: i18n.t('leaveClub'),
+      content: i18n.t('leaveConfirm'),
+      confirmText: i18n.t('ok'),
+      cancelText: i18n.t('cancel'),
       success: api.safe(async (r) => {
         if (!r.confirm) return;
-        await api.call('leaveClub', { clubId: this.data.id }, { loading: '处理中' });
+        await api.call('leaveClub', { clubId: this.data.id }, { loading: 'processing' });
         wx.navigateBack();
       }),
     });
@@ -118,17 +131,17 @@ Page({
   tapMember(e) {
     const m = this.data.members[e.currentTarget.dataset.i];
     const me = app.globalData.user;
-    const actions = [{ text: '查看资料', fn: () => this.goPlayer(m._id) }];
+    const actions = [{ text: i18n.t('viewProfile'), fn: () => this.goPlayer(m._id) }];
     if (this.data.myRole === 'owner' && m.role !== 'owner') {
       actions.push(
         m.role === 'admin'
-          ? { text: '取消管理员', fn: () => this.setRole(m, 'member') }
-          : { text: '设为管理员', fn: () => this.setRole(m, 'admin') }
+          ? { text: i18n.t('removeAdmin'), fn: () => this.setRole(m, 'member') }
+          : { text: i18n.t('makeAdmin'), fn: () => this.setRole(m, 'admin') }
       );
     }
     const canRemove =
       this.data.isAdmin && m.role !== 'owner' && m._id !== me._id && (m.role !== 'admin' || this.data.myRole === 'owner');
-    if (canRemove) actions.push({ text: '移出俱乐部', fn: () => this.removeMember(m) });
+    if (canRemove) actions.push({ text: i18n.t('removeFromClub'), fn: () => this.removeMember(m) });
     if (actions.length === 1) return actions[0].fn();
     wx.showActionSheet({
       itemList: actions.map((a) => a.text),
@@ -137,18 +150,20 @@ Page({
   },
 
   async setRole(m, role) {
-    await api.call('setRole', { clubId: this.data.id, userId: m._id, role }, { loading: '处理中' });
-    await this.load();
+    await api.call('setRole', { clubId: this.data.id, userId: m._id, role }, { loading: 'processing' }).catch(() => null);
+    await this.load().catch(() => {});
   },
 
   removeMember(m) {
     wx.showModal({
-      title: '移出成员',
-      content: `确定将「${m.nickName}」移出俱乐部？`,
+      title: i18n.t('removeMemberTitle'),
+      content: i18n.t('removeMemberConfirm', m.nickName),
+      confirmText: i18n.t('ok'),
+      cancelText: i18n.t('cancel'),
       success: api.safe(async (r) => {
         if (!r.confirm) return;
-        await api.call('removeMember', { clubId: this.data.id, userId: m._id }, { loading: '处理中' });
-        this.load();
+        await api.call('removeMember', { clubId: this.data.id, userId: m._id }, { loading: 'processing' });
+        await this.load();
       }),
     });
   },
@@ -169,21 +184,17 @@ Page({
   async addGuest() {
     const name = this.data.guestName.trim();
     if (!name) return;
-    const i = this.data.guestLevel;
-    await api.call(
-      'addGuest',
-      { clubId: this.data.id, name, level: i === 0 ? undefined : Number(LEVELS[i]) },
-      { loading: '添加中' }
-    );
+    const level = LEVELS[this.data.guestLevel];
+    await api.call('addGuest', { clubId: this.data.id, name, level: level == null ? undefined : level }, { loading: 'adding' });
     this.setData({ showGuest: false });
-    wx.showToast({ title: '已添加' });
+    wx.showToast({ title: i18n.t('added') });
     await this.load();
   },
 
   onShareAppMessage() {
     const c = this.data.club;
     return {
-      title: c ? `邀请你加入「${c.name}」匹克球俱乐部` : '匹克球俱乐部',
+      title: c ? i18n.t('shareClub', c.name) : i18n.t('clubFallback'),
       path: '/pages/club/detail/detail?id=' + this.data.id,
     };
   },

@@ -1,34 +1,40 @@
 <view class="page">
   <view class="card">
     <view class="field">
-      <text class="label">名称</text>
-      <input placeholder="例如：北区匹克球俱乐部" placeholder-class="placeholder" maxlength="30" value="{{name}}" data-k="name" bindinput="onInput" />
+      <text class="label">{{t.name}}</text>
+      <input placeholder="{{t.clubNamePh}}" placeholder-class="placeholder" maxlength="30" value="{{name}}" data-k="name" bindinput="onInput" />
     </view>
     <view class="field">
-      <text class="label">城市</text>
-      <input placeholder="选填" placeholder-class="placeholder" maxlength="20" value="{{city}}" data-k="city" bindinput="onInput" />
+      <text class="label">{{t.city}}</text>
+      <input placeholder="{{t.optional}}" placeholder-class="placeholder" maxlength="20" value="{{city}}" data-k="city" bindinput="onInput" />
     </view>
     <view class="field">
-      <text class="label">简介</text>
-      <textarea placeholder="选填：常驻场馆、活动时间、水平要求…" placeholder-class="placeholder" maxlength="300" value="{{intro}}" data-k="intro" bindinput="onInput" />
+      <text class="label">{{t.intro}}</text>
+      <textarea placeholder="{{t.introPh}}" placeholder-class="placeholder" maxlength="300" value="{{intro}}" data-k="intro" bindinput="onInput" />
     </view>
   </view>
 
   <block wx:if="{{clubId}}">
-    <view class="section-title">积分规则</view>
+    <view class="section-title">{{t.pointsRules}}</view>
     <view class="card">
       <view class="field">
-        <text class="label">胜一场</text>
+        <text class="label">{{t.perWin}}</text>
         <input type="number" value="{{winPoints}}" data-k="winPoints" bindinput="onInput" />
-        <text class="muted">分</text>
+        <text class="muted">{{t.pts}}</text>
       </view>
       <view class="field">
-        <text class="label">负一场</text>
+        <text class="label">{{t.perLoss}}</text>
         <input type="number" value="{{lossPoints}}" data-k="lossPoints" bindinput="onInput" />
-        <text class="muted">分（鼓励出勤可设为 1）</text>
+        <text class="muted">{{t.lossHint}}</text>
+      </view>
+      <view class="field">
+        <text class="label">{{t.currency}}</text>
+        <picker range="{{currencies}}" value="{{currencyIdx}}" bindchange="onCurrency">
+          <view>{{currencies[currencyIdx]}} ›</view>
+        </picker>
       </view>
     </view>
   </block>
 
-  <button class="btn" bindtap="save" disabled="{{saving}}">{{clubId ? '保存' : '创建俱乐部'}}</button>
+  <button class="btn" bindtap="save" disabled="{{saving}}">{{clubId ? t.save : t.createClub}}</button>
 </view>

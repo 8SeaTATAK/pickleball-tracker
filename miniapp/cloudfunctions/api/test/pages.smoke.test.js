@@ -10,7 +10,7 @@ const MP = path.join(__dirname, '../../../miniprogram');
 
 function setupEnv() {
   const db = createMockDb();
-  const env = { openid: 'o_owner', nav: [], toasts: [], modalConfirm: true, sheetIndex: 0 };
+  const env = { openid: 'o_owner', nav: [], toasts: [], modalConfirm: true, sheetIndex: 0, storage: {}, tabBar: {}, sysLang: 'zh_CN' };
   let t = Date.now();
   global.wx = {
     cloud: {
@@ -21,6 +21,11 @@ function setupEnv() {
       uploadFile: async () => ({ fileID: 'cloud://avatar.jpg' }),
     },
     showToast: (o) => env.toasts.push(o.title),
+    getStorageSync: (k) => env.storage[k] || '',
+    setStorageSync: (k, v) => (env.storage[k] = v),
+    getAppBaseInfo: () => ({ language: env.sysLang }),
+    setTabBarItem: (o) => (env.tabBar[o.index] = o.text),
+    reLaunch: (o) => env.nav.push(o.url),
     showLoading() {},
     hideLoading() {},
     stopPullDownRefresh() {},
@@ -38,7 +43,7 @@ function setupEnv() {
   let appInst;
   global.App = (cfg) => (appInst = cfg);
   global.getApp = () => appInst;
-  delete require.cache[require.resolve(path.join(MP, 'app.js'))];
+  Object.keys(require.cache).filter((k) => k.startsWith(MP)).forEach((k) => delete require.cache[k]);
   require(path.join(MP, 'app.js'));
   appInst.onLaunch();
 
@@ -238,4 +243,67 @@ test('页面冒烟：首页 → 建俱乐部 → 发活动 → 报名 → 生成
   ed3.removeEvent();
   await flush();
   assert.ok(env.toasts.some((x) => /不能删除/.test(x)), env.toasts.join());
+});
+
+test('多语言：跟随系统语言、手动切换、错误提示翻译', async () => {
+  const { env, open, flush } = setupEnv();
+  env.sysLang = 'en';
+  const i18n = require(path.join(MP, 'utils/i18n.js'));
+  assert.strictEqual(i18n.getLang(), 'en', '系统英文 → 默认英文');
+
+  const home = open('pages/index/index');
+  home.onLoad();
+  home.onShow();
+  await home.load();
+  assert.strictEqual(home.data.t.createClub, 'Create club');
+  assert.strictEqual(env.tabBar[0], 'Home');
+  assert.ok(home.data.user.nickName.startsWith('Player '), '新用户默认英文昵称');
+  assert.ok(home.data.user.doublesText.endsWith('provisional'));
+
+  // 英文报错
+  const ce = open('pages/club/edit/edit');
+  await ce.onLoad({});
+  ce.onInput(ev({ k: 'name' }, 'x'.repeat(31)));
+  await ce.save();
+  assert.ok(env.toasts.includes('a club name: max 30 characters'), env.toasts.join(' | '));
+
+  // 切到越南语
+  const me = open('pages/profile/profile');
+  me.onLoad({});
+  await me.load();
+  me.onLang(ev({}, '2'));
+  assert.strictEqual(env.storage.lang, 'vi');
+  assert.strictEqual(env.nav.pop(), '/pages/index/index');
+  assert.strictEqual(i18n.t('tabBoard'), 'Bảng xếp hạng');
+  assert.strictEqual(i18n.errMsg('intRange', { field: 'courts', lo: 1, hi: 30 }), 'Số sân phải là số nguyên 1–30');
+  assert.strictEqual(i18n.errMsg('some raw db error'), 'some raw db error', '不认识的错误原样显示');
+
+  // 日期格式：越南语日在前
+  const fmt = require(path.join(MP, 'utils/fmt.js'));
+  const ts = new Date(2026, 10, 21, 9, 0).getTime(); // 2026-11-21 周六
+  assert.strictEqual(fmt.range(ts, ts + 7200e3), 'T7 21/11 09:00–11:00');
+  i18n.setLang('zh');
+  assert.strictEqual(fmt.range(ts, ts + 7200e3), '11/21 周六 09:00–11:00');
+  i18n.setLang('en');
+  assert.strictEqual(fmt.range(ts, ts + 7200e3), 'Sat 21/11 09:00–11:00');
+
+  // 币种：俱乐部设置改成 RM 后活动页显示 RM
+  ce.onInput(ev({ k: 'name' }, 'KL Picklers'));
+  await ce.save();
+  const clubId = env.nav.pop().split('id=')[1];
+  const se = open('pages/club/edit/edit');
+  await se.onLoad({ id: clubId });
+  se.onCurrency(ev({}, '2'));
+  await se.save();
+  const ee = open('pages/event/edit/edit');
+  await ee.onLoad({ clubId });
+  ee.onInput(ev({ k: 'title' }, 'Sat social'));
+  ee.onInput(ev({ k: 'fee' }, '10'));
+  await ee.save();
+  const ed = open('pages/event/detail/detail');
+  ed.onLoad({ id: env.nav.pop().split('id=')[1] });
+  await ed.load();
+  assert.strictEqual(ed.data.currency, 'RM');
+  assert.strictEqual(ed.data.modes[0].name, 'Doubles rotation');
+  await flush();
 });

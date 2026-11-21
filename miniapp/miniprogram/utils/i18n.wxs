@@ -1,0 +1,9 @@
+// WXML 里的占位符替换：{{i.f(t.membersN, n)}}
+function f(s, a, b, c) {
+  if (!s) return '';
+  s = s.split('{0}').join(a);
+  if (b !== undefined) s = s.split('{1}').join(b);
+  if (c !== undefined) s = s.split('{2}').join(c);
+  return s;
+}
+module.exports = { f: f };

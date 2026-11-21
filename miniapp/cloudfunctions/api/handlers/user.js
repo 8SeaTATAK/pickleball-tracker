@@ -5,13 +5,16 @@ const { fail, newRatingBlock, publicUser, usersMap, str } = require('./common');
 // 自评起始水平（参考 DUPR / USAP 自评描述），只在还没打过比赛时可设置
 const LEVELS = [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0];
 
-async function login(ctx) {
+// 新用户默认昵称按语言
+const DEFAULT_NAME = { zh: '球友', en: 'Player ', vi: 'Người chơi ', ms: 'Pemain ' };
+
+async function login(ctx, params = {}) {
   const { db, openid } = ctx;
   let u = await getDoc(db, 'users', openid);
   if (!u) {
     u = {
       _id: openid,
-      nickName: '球友' + openid.slice(-4),
+      nickName: (DEFAULT_NAME[params.lang] || DEFAULT_NAME.en) + openid.slice(-4),
       avatarUrl: '',
       guest: false,
       leveled: false,
@@ -28,14 +31,14 @@ async function login(ctx) {
 async function updateProfile(ctx, { nickName, avatarUrl, level }) {
   const { db, openid } = ctx;
   const u = await getDoc(db, 'users', openid);
-  if (!u) fail('请先登录');
+  if (!u) fail('notLoggedIn');
   const data = {};
-  if (nickName != null) data.nickName = str(nickName, 20, '昵称', true);
-  if (avatarUrl != null) data.avatarUrl = str(avatarUrl, 500, '头像');
+  if (nickName != null) data.nickName = str(nickName, 20, 'nickName', true);
+  if (avatarUrl != null) data.avatarUrl = str(avatarUrl, 500, 'avatar');
   if (level != null) {
     const lv = Number(level);
-    if (!LEVELS.includes(lv)) fail('无效的水平');
-    if (u.doubles.games || u.singles.games) fail('已有比赛记录，评分由比赛结果决定');
+    if (!LEVELS.includes(lv)) fail('invalidLevel');
+    if (u.doubles.games || u.singles.games) fail('levelLocked');
     data.doubles = newRatingBlock(lv);
     data.singles = newRatingBlock(lv);
     data.leveled = true;
@@ -48,7 +51,7 @@ async function getPlayer(ctx, { userId }) {
   const { db } = ctx;
   const id = userId || ctx.openid;
   const u = await getDoc(db, 'users', id);
-  if (!u) fail('球员不存在');
+  if (!u) fail('playerNotFound');
 
   const history = (
     await db.collection('ratingHistory').where({ userId: id }).orderBy('at', 'desc').limit(60).get()

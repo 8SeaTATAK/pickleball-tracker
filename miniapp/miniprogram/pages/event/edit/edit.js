@@ -1,5 +1,6 @@
 const api = require('../../../utils/api');
 const fmt = require('../../../utils/fmt');
+const i18n = require('../../../utils/i18n');
 const app = getApp();
 
 function nextSaturday() {
@@ -10,6 +11,7 @@ function nextSaturday() {
 
 Page({
   data: {
+    t: {},
     clubId: '',
     eventId: '',
     title: '',
@@ -26,11 +28,11 @@ Page({
   },
 
   async onLoad(q) {
+    this.setData({ t: i18n.dict(), clubId: q.clubId || '', today: fmt.date(Date.now()), day: nextSaturday() });
+    wx.setNavigationBarTitle({ title: i18n.t(q.id ? 'editEvent' : 'newEventTitle') });
     await app.ensureLogin();
-    this.setData({ clubId: q.clubId || '', today: fmt.date(Date.now()), day: nextSaturday() });
     if (!q.id) return;
-    wx.setNavigationBarTitle({ title: '编辑活动' });
-    const { event: e } = await api.call('getEvent', { eventId: q.id }, { loading: '加载中' });
+    const { event: e } = await api.call('getEvent', { eventId: q.id }, { loading: 'loading' });
     this.setData({
       eventId: e._id,
       clubId: e.clubId,
@@ -52,7 +54,7 @@ Page({
 
   async save() {
     const d = this.data;
-    if (!d.title.trim()) return wx.showToast({ title: '请填写活动名称', icon: 'none' });
+    if (!d.title.trim()) return wx.showToast({ title: i18n.t('needEventName'), icon: 'none' });
     const startTime = fmt.toTs(d.day, d.start);
     let endTime = fmt.toTs(d.day, d.end);
     if (endTime <= startTime) endTime += 24 * 3600 * 1000; // 跨零点
@@ -69,12 +71,14 @@ Page({
     this.setData({ saving: true });
     try {
       if (d.eventId) {
-        await api.call('updateEvent', { eventId: d.eventId, ...body }, { loading: '保存中' });
+        await api.call('updateEvent', { eventId: d.eventId, ...body }, { loading: 'saving' });
         wx.navigateBack();
       } else {
-        const { eventId } = await api.call('createEvent', { clubId: d.clubId, ...body }, { loading: '发布中' });
+        const { eventId } = await api.call('createEvent', { clubId: d.clubId, ...body }, { loading: 'publishing' });
         wx.redirectTo({ url: '/pages/event/detail/detail?id=' + eventId });
       }
+    } catch (e) {
+      // 错误已提示
     } finally {
       this.setData({ saving: false });
     }

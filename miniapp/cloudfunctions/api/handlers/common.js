@@ -1,9 +1,15 @@
 const { getDoc, getByIds } = require('../lib/db');
 const { DEFAULT_RATING } = require('../lib/rating');
 
-class AppError extends Error {}
-const fail = (msg) => {
-  throw new AppError(msg);
+// 业务错误只返回错误代码 + 参数，文案由前端按用户语言显示（miniprogram/utils/i18n.js 的 err_*）
+class AppError extends Error {
+  constructor(code, params) {
+    super(code);
+    this.params = params || {};
+  }
+}
+const fail = (code, params) => {
+  throw new AppError(code, params);
 };
 
 const newRatingBlock = (r = DEFAULT_RATING) => ({ rating: r, games: 0, wins: 0, losses: 0 });
@@ -37,26 +43,26 @@ const isAdminRole = (role) => role === 'owner' || role === 'admin';
 
 async function requireAdmin(ctx, clubId) {
   const m = await getMember(ctx, clubId);
-  if (!m || !isAdminRole(m.role)) fail('需要俱乐部管理员权限');
+  if (!m || !isAdminRole(m.role)) fail('needAdmin');
   return m;
 }
 
 async function requireMember(ctx, clubId) {
   const m = await getMember(ctx, clubId);
-  if (!m) fail('请先加入俱乐部');
+  if (!m) fail('joinFirst');
   return m;
 }
 
 function str(v, max, name, required = false) {
   const s = (v == null ? '' : String(v)).trim();
-  if (required && !s) fail(`请填写${name}`);
-  if (s.length > max) fail(`${name}最多 ${max} 个字`);
+  if (required && !s) fail('required', { field: name });
+  if (s.length > max) fail('tooLong', { field: name, max });
   return s;
 }
 
 function int(v, lo, hi, name) {
   const n = Number(v);
-  if (!Number.isInteger(n) || n < lo || n > hi) fail(`${name}须为 ${lo}–${hi} 的整数`);
+  if (!Number.isInteger(n) || n < lo || n > hi) fail('intRange', { field: name, lo, hi });
   return n;
 }
 

@@ -12,7 +12,8 @@ const {
   int,
 } = require('./common');
 
-const DEFAULT_SETTINGS = { winPoints: 3, lossPoints: 1 };
+const CURRENCIES = ['A$', '¥', 'RM', 'S$', '₫', '$'];
+const DEFAULT_SETTINGS = { winPoints: 3, lossPoints: 1, currency: 'A$' };
 
 async function addMember(ctx, clubId, userId, role) {
   await ctx.db
@@ -25,11 +26,11 @@ async function addMember(ctx, clubId, userId, role) {
 async function createClub(ctx, { name, intro, city }) {
   const { db } = ctx;
   const owned = await db.collection('clubs').where({ ownerId: ctx.openid }).count();
-  if (owned.total >= 10) fail('每人最多创建 10 个俱乐部');
+  if (owned.total >= 10) fail('clubLimit');
   const data = {
-    name: str(name, 30, '俱乐部名称', true),
-    intro: str(intro, 300, '简介'),
-    city: str(city, 20, '城市'),
+    name: str(name, 30, 'clubName', true),
+    intro: str(intro, 300, 'intro'),
+    city: str(city, 20, 'city'),
     ownerId: ctx.openid,
     inviteCode: randomCode(),
     memberCount: 0,
@@ -41,14 +42,18 @@ async function createClub(ctx, { name, intro, city }) {
   return { clubId: _id };
 }
 
-async function updateClub(ctx, { clubId, name, intro, city, winPoints, lossPoints }) {
+async function updateClub(ctx, { clubId, name, intro, city, winPoints, lossPoints, currency }) {
   await requireAdmin(ctx, clubId);
   const data = {};
-  if (name != null) data.name = str(name, 30, '俱乐部名称', true);
-  if (intro != null) data.intro = str(intro, 300, '简介');
-  if (city != null) data.city = str(city, 20, '城市');
-  if (winPoints != null) data['settings.winPoints'] = int(winPoints, 0, 10, '胜场积分');
-  if (lossPoints != null) data['settings.lossPoints'] = int(lossPoints, 0, 10, '负场积分');
+  if (name != null) data.name = str(name, 30, 'clubName', true);
+  if (intro != null) data.intro = str(intro, 300, 'intro');
+  if (city != null) data.city = str(city, 20, 'city');
+  if (winPoints != null) data['settings.winPoints'] = int(winPoints, 0, 10, 'winPoints');
+  if (lossPoints != null) data['settings.lossPoints'] = int(lossPoints, 0, 10, 'lossPoints');
+  if (currency != null) {
+    if (!CURRENCIES.includes(currency)) fail('invalidCurrency');
+    data['settings.currency'] = currency;
+  }
   await ctx.db.collection('clubs').doc(clubId).update({ data });
   return {};
 }
@@ -71,7 +76,7 @@ async function getClub(ctx, { clubId, inviteCode }) {
     const res = await db.collection('clubs').where({ inviteCode: String(inviteCode).toUpperCase() }).limit(1).get();
     club = res.data[0] || null;
   }
-  if (!club) fail('俱乐部不存在');
+  if (!club) fail('clubNotFound');
 
   const me = await getMember(ctx, club._id);
   const members = await listAll(db.collection('members').where({ clubId: club._id }), 2000);
@@ -98,10 +103,10 @@ async function joinClub(ctx, { clubId, inviteCode }) {
   if (inviteCode) {
     const res = await db.collection('clubs').where({ inviteCode: String(inviteCode).trim().toUpperCase() }).limit(1).get();
     club = res.data[0] || null;
-    if (!club) fail('邀请码无效');
+    if (!club) fail('badInviteCode');
   } else {
     club = await getDoc(db, 'clubs', clubId);
-    if (!club) fail('俱乐部不存在');
+    if (!club) fail('clubNotFound');
   }
   if (!(await getMember(ctx, club._id))) await addMember(ctx, club._id, ctx.openid, 'member');
   return { clubId: club._id };
@@ -110,7 +115,7 @@ async function joinClub(ctx, { clubId, inviteCode }) {
 async function leaveClub(ctx, { clubId }) {
   const m = await getMember(ctx, clubId);
   if (!m) return {};
-  if (m.role === 'owner') fail('创建者不能退出俱乐部');
+  if (m.role === 'owner') fail('ownerCannotLeave');
   await ctx.db.collection('members').doc(memberId(clubId, ctx.openid)).remove();
   await ctx.db.collection('clubs').doc(clubId).update({ data: { memberCount: ctx._.inc(-1) } });
   return {};
@@ -118,10 +123,10 @@ async function leaveClub(ctx, { clubId }) {
 
 async function setRole(ctx, { clubId, userId, role }) {
   const me = await getMember(ctx, clubId);
-  if (!me || me.role !== 'owner') fail('只有创建者可以设置管理员');
-  if (!['admin', 'member'].includes(role)) fail('无效角色');
+  if (!me || me.role !== 'owner') fail('ownerOnly');
+  if (!['admin', 'member'].includes(role)) fail('invalidRole');
   const m = await getMember(ctx, clubId, userId);
-  if (!m || m.role === 'owner') fail('无法修改该成员');
+  if (!m || m.role === 'owner') fail('cannotModifyMember');
   await ctx.db.collection('members').doc(memberId(clubId, userId)).update({ data: { role } });
   return {};
 }
@@ -130,7 +135,7 @@ async function removeMember(ctx, { clubId, userId }) {
   const me = await requireAdmin(ctx, clubId);
   const m = await getMember(ctx, clubId, userId);
   if (!m) return {};
-  if (m.role === 'owner' || (m.role === 'admin' && me.role !== 'owner')) fail('无法移除该成员');
+  if (m.role === 'owner' || (m.role === 'admin' && me.role !== 'owner')) fail('cannotRemoveMember');
   await ctx.db.collection('members').doc(memberId(clubId, userId)).remove();
   await ctx.db.collection('clubs').doc(clubId).update({ data: { memberCount: ctx._.inc(-1) } });
   return {};
@@ -143,7 +148,7 @@ async function addGuest(ctx, { clubId, name, level }) {
   const id = 'guest_' + randomCode(10).toLowerCase();
   await ctx.db.collection('users').doc(id).set({
     data: {
-      nickName: str(name, 20, '姓名', true),
+      nickName: str(name, 20, 'name', true),
       avatarUrl: '',
       guest: true,
       createdBy: ctx.openid,
@@ -162,7 +167,7 @@ const DAY = 24 * 3600 * 1000;
 async function leaderboard(ctx, { clubId, period = 'all' }) {
   const { db, _ } = ctx;
   const club = await getDoc(db, 'clubs', clubId);
-  if (!club) fail('俱乐部不存在');
+  if (!club) fail('clubNotFound');
   const where = { clubId, status: 'done' };
   const now = ctx.now();
   if (period === 'week') where.playedAt = _.gte(now - 7 * DAY);
@@ -188,4 +193,5 @@ module.exports = {
   addGuest,
   leaderboard,
   isAdminRole,
+  CURRENCIES,
 };

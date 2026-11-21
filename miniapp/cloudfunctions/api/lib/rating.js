@@ -44,8 +44,8 @@ function teamRating(players) {
 
 function validateScore(scoreA, scoreB) {
   const ok = (n) => Number.isInteger(n) && n >= 0 && n <= 99;
-  if (!ok(scoreA) || !ok(scoreB)) return '比分须为 0–99 的整数';
-  if (scoreA === scoreB) return '比分不能打平';
+  if (!ok(scoreA) || !ok(scoreB)) return 'scoreRange';
+  if (scoreA === scoreB) return 'scoreTie';
   return null;
 }
 
@@ -56,7 +56,7 @@ function validateScore(scoreA, scoreB) {
 function rateMatch({ teamA, teamB, scoreA, scoreB }) {
   const err = validateScore(scoreA, scoreB);
   if (err) throw new Error(err);
-  if (!teamA.length || teamA.length !== teamB.length) throw new Error('双方人数不一致');
+  if (!teamA.length || teamA.length !== teamB.length) throw new Error('teamMismatch');
 
   const ra = teamRating(teamA);
   const rb = teamRating(teamB);

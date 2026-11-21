@@ -6,7 +6,7 @@ App({
 
   onLaunch() {
     if (!wx.cloud) {
-      wx.showModal({ title: '提示', content: '请使用 2.2.3 以上的基础库以使用云能力', showCancel: false });
+      wx.showModal({ content: 'Please update WeChat to use this mini program.', showCancel: false });
       return;
     }
     wx.cloud.init({ env: ENV_ID, traceUser: true });
@@ -17,8 +17,9 @@ App({
     if (this.globalData.user && !force) return Promise.resolve(this.globalData.user);
     if (!this._login || force) {
       const api = require('./utils/api');
+      const i18n = require('./utils/i18n');
       this._login = api
-        .call('login', {}, { silent: true })
+        .call('login', { lang: i18n.getLang() }, { silent: true })
         .then((u) => {
           this.globalData.user = u;
           return u;

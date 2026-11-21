@@ -1,5 +1,6 @@
+const i18n = require('./i18n');
+
 const pad = (n) => (n < 10 ? '0' + n : '' + n);
-const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 
 function date(ts) {
   const d = new Date(ts);
@@ -11,10 +12,19 @@ function time(ts) {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// 11/23 周六 09:00–11:00
+// 中文：11/23 周六 09:00–11:00；其他语言按澳洲/东南亚习惯日在前：Sat 23/11 09:00–11:00
 function range(start, end) {
   const d = new Date(start);
-  return `${d.getMonth() + 1}/${d.getDate()} 周${WEEK[d.getDay()]} ${time(start)}–${time(end)}`;
+  const wd = i18n.weekday(d.getDay());
+  const t = `${time(start)}–${time(end)}`;
+  if (i18n.getLang() === 'zh') return `${d.getMonth() + 1}/${d.getDate()} ${wd} ${t}`;
+  return `${wd} ${d.getDate()}/${d.getMonth() + 1} ${t}`;
+}
+
+// 11/23（中文）或 23/11
+function shortDate(ts) {
+  const d = new Date(ts);
+  return i18n.getLang() === 'zh' ? `${d.getMonth() + 1}/${d.getDate()}` : `${d.getDate()}/${d.getMonth() + 1}`;
 }
 
 function rating(r) {
@@ -26,10 +36,10 @@ function delta(d) {
   return (d > 0 ? '+' : '') + d.toFixed(3);
 }
 
-// 可靠度 < 30% 显示“暂定”
+// 打满 6 场前标“暂定”
 function ratingLabel(block) {
   if (!block) return '-';
-  return rating(block.rating) + (block.games < 6 ? ' 暂定' : '');
+  return rating(block.rating) + (block.games < 6 ? ' ' + i18n.t('provisional') : '');
 }
 
 // 'YYYY-MM-DD' + 'HH:mm' → 时间戳（按手机本地时区）
@@ -39,7 +49,7 @@ function toTs(dateStr, timeStr) {
   return new Date(y, m - 1, d, hh, mm).getTime();
 }
 
-const STATUS = { open: '报名中', playing: '进行中', finished: '已结束' };
-const ROLE = { owner: '创建者', admin: '管理员', member: '成员' };
+const status = (s) => i18n.t('status_' + s);
+const role = (r) => i18n.t('role_' + r);
 
-module.exports = { date, time, range, rating, delta, ratingLabel, toTs, STATUS, ROLE };
+module.exports = { date, time, range, shortDate, rating, delta, ratingLabel, toTs, status, role };

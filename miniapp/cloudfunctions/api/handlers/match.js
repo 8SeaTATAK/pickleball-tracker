@@ -34,9 +34,9 @@ async function generateSchedule(ctx, p) {
   const ev = await loadEvent(ctx, p.eventId);
   await requireAdmin(ctx, ev.clubId);
   const mode = p.mode || 'rotation';
-  if (!MODES.includes(mode)) fail('无效的对阵模式');
-  const courts = int(p.courts == null ? ev.courts : p.courts, 1, 30, '场地数');
-  const rounds = int(p.rounds == null ? 6 : p.rounds, 1, 30, '轮数');
+  if (!MODES.includes(mode)) fail('invalidMode');
+  const courts = int(p.courts == null ? ev.courts : p.courts, 1, 30, 'courts');
+  const rounds = int(p.rounds == null ? 6 : p.rounds, 1, 30, 'rounds');
 
   let players = p.playerIds;
   if (!players || !players.length) {
@@ -45,7 +45,7 @@ async function generateSchedule(ctx, p) {
   }
   players = Array.from(new Set(players));
   const users = await getByIds(db, _, 'users', players);
-  if (users.length !== players.length) fail('有球员不存在');
+  if (users.length !== players.length) fail('playerNotFound');
 
   const existing = await listAll(db.collection('matches').where({ eventId: ev._id }), 2000);
   const replace = p.replace !== false;
@@ -70,7 +70,7 @@ async function generateSchedule(ctx, p) {
       seed: p.seed,
     });
   } else if (mode === 'fixed') {
-    if (players.length % 2) fail('固定搭档需要偶数名球员（按报名顺序两两组队）');
+    if (players.length % 2) fail('fixedNeedsEven');
     const teams = [];
     for (let i = 0; i < players.length; i += 2) teams.push([players[i], players[i + 1]]);
     plan = roundRobin(teams, { courts });
@@ -91,19 +91,19 @@ async function addMatch(ctx, { eventId, teamA, teamB, round, court }) {
   const { db, _ } = ctx;
   const ev = await loadEvent(ctx, eventId);
   await requireAdmin(ctx, ev.clubId);
-  if (!Array.isArray(teamA) || !Array.isArray(teamB)) fail('请选择球员');
-  if (!(teamA.length === teamB.length && (teamA.length === 1 || teamA.length === 2))) fail('仅支持单打 1v1 或双打 2v2');
+  if (!Array.isArray(teamA) || !Array.isArray(teamB)) fail('selectPlayers');
+  if (!(teamA.length === teamB.length && (teamA.length === 1 || teamA.length === 2))) fail('teamSize');
   const all = [...teamA, ...teamB];
-  if (new Set(all).size !== all.length) fail('同一名球员不能重复出现');
+  if (new Set(all).size !== all.length) fail('duplicatePlayer');
   const users = await getByIds(db, _, 'users', all);
-  if (users.length !== all.length) fail('有球员不存在');
+  if (users.length !== all.length) fail('playerNotFound');
 
   let r = round;
   if (r == null) {
     const existing = await listAll(db.collection('matches').where({ eventId }), 2000);
     r = existing.reduce((mx, m) => Math.max(mx, m.round), 0) + 1;
   }
-  const doc = matchDoc(ctx, ev, int(r, 1, 999, '轮次'), int(court == null ? 1 : court, 1, 30, '场地'), teamA, teamB);
+  const doc = matchDoc(ctx, ev, int(r, 1, 999, 'round'), int(court == null ? 1 : court, 1, 30, 'court'), teamA, teamB);
   const { _id } = await db.collection('matches').add({ data: doc });
   return { matchId: _id };
 }
@@ -138,7 +138,7 @@ async function writeUsers(t, type, users, ids) {
 
 async function loadForEdit(ctx, matchId) {
   const m = await getDoc(ctx.db, 'matches', matchId);
-  if (!m) fail('对局不存在');
+  if (!m) fail('matchNotFound');
   const me = await getMember(ctx, m.clubId);
   return { m, admin: !!me && isAdminRole(me.role) };
 }
@@ -164,8 +164,8 @@ async function writeHistory(ctx, match, changes) {
 async function submitScore(ctx, { matchId, scoreA, scoreB }) {
   const { db } = ctx;
   const { m, admin } = await loadForEdit(ctx, matchId);
-  if (!admin && !m.players.includes(ctx.openid)) fail('只有本场球员或管理员可以录入比分');
-  if (m.status === 'done' && !admin) fail('比分已录入，如需修改请联系管理员');
+  if (!admin && !m.players.includes(ctx.openid)) fail('scorePermission');
+  if (m.status === 'done' && !admin) fail('scoreLocked');
   const a = Number(scoreA);
   const b = Number(scoreB);
   const err = validateScore(a, b);
@@ -211,7 +211,7 @@ async function submitScore(ctx, { matchId, scoreA, scoreB }) {
 async function deleteMatch(ctx, { matchId }) {
   const { db } = ctx;
   const { m, admin } = await loadForEdit(ctx, matchId);
-  if (!admin) fail('需要俱乐部管理员权限');
+  if (!admin) fail('needAdmin');
   if (m.status === 'done') {
     await db.runTransaction(async (t) => {
       const cur = (await t.collection('matches').doc(matchId).get()).data;

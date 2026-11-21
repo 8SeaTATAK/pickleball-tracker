@@ -1,11 +1,18 @@
 const api = require('../../utils/api');
 const fmt = require('../../utils/fmt');
+const i18n = require('../../utils/i18n');
 const app = getApp();
 
 Page({
-  data: { user: null, clubs: [], events: [], loaded: false, showJoin: false, code: '' },
+  data: { t: {}, user: null, clubs: [], events: [], loaded: false, showJoin: false, code: '' },
+
+  onLoad() {
+    this.setData({ t: i18n.dict() });
+  },
 
   onShow() {
+    wx.setNavigationBarTitle({ title: i18n.t('appName') });
+    i18n.applyTabBar();
     this.load();
   },
 
@@ -24,12 +31,12 @@ Page({
           doublesText: fmt.ratingLabel(user.doubles),
           singlesText: fmt.ratingLabel(user.singles),
         },
-        clubs,
+        clubs: clubs.map((c) => ({ ...c, roleText: c.myRole === 'member' ? '' : fmt.role(c.myRole) })),
         events: events.map((e) => ({
           ...e,
           when: fmt.range(e.startTime, e.endTime),
-          statusText: fmt.STATUS[e.status],
-          signText: e.mySignup === 'joined' ? '已报名' : e.mySignup === 'waitlist' ? '候补中' : '',
+          statusText: fmt.status(e.status),
+          signText: e.mySignup ? i18n.t('signed_' + e.mySignup) : '',
         })),
       });
     } catch (e) {
@@ -66,12 +73,12 @@ Page({
   async join() {
     const code = this.data.code.trim();
     if (!code) return;
-    const { clubId } = await api.call('joinClub', { inviteCode: code }, { loading: '加入中' });
+    const { clubId } = await api.call('joinClub', { inviteCode: code }, { loading: 'joining' });
     this.setData({ showJoin: false });
     wx.navigateTo({ url: '/pages/club/detail/detail?id=' + clubId });
   },
 
   onShareAppMessage() {
-    return { title: '匹克球助手 · 俱乐部约球、计分、评分', path: '/pages/index/index' };
+    return { title: i18n.t('shareHome'), path: '/pages/index/index' };
   },
 });

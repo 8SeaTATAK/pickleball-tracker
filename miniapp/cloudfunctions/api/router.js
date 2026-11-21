@@ -35,19 +35,19 @@ const actions = {
   deleteMatch: match.deleteMatch,
 };
 
-// 返回 { ok: true, data } 或 { ok: false, error }
+// 返回 { ok: true, data } 或 { ok: false, error: 错误代码, params }
 async function dispatch(ctx, payload) {
   const { action, ...params } = payload || {};
   const fn = actions[action];
-  if (!fn) return { ok: false, error: '未知操作: ' + action };
-  if (!ctx.openid) return { ok: false, error: '未登录' };
+  if (!fn) return { ok: false, error: 'unknownAction', params: { action } };
+  if (!ctx.openid) return { ok: false, error: 'notLoggedIn' };
   try {
     return { ok: true, data: await fn(ctx, params) };
   } catch (e) {
-    if (e instanceof AppError) return { ok: false, error: e.message };
-    // rateMatch 等纯函数抛出的普通 Error 也是用户可读的提示
+    if (e instanceof AppError) return { ok: false, error: e.message, params: e.params };
+    // rateMatch / rotation 抛出的 Error 的 message 也是错误代码；数据库等意外错误原样返回
     console.error(action, e);
-    return { ok: false, error: e.message || '服务器错误' };
+    return { ok: false, error: e.message || 'serverError', params: e.params || {} };
   }
 }
 

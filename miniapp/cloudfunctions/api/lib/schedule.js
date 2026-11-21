@@ -55,7 +55,11 @@ function rotation(players, opts) {
   const ratings = opts.ratings || {};
   const rand = mulberry32(opts.seed == null ? Date.now() : opts.seed);
   const uniq = Array.from(new Set(players));
-  if (uniq.length < perGame) throw new Error(`至少需要 ${perGame} 名球员`);
+  if (uniq.length < perGame) {
+    const e = new Error('needPlayers');
+    e.params = { n: perGame };
+    throw e;
+  }
 
   const played = new Map(uniq.map((p) => [p, 0]));
   const restStreak = new Map(uniq.map((p) => [p, 0]));
@@ -143,7 +147,7 @@ function rotation(players, opts) {
  */
 function roundRobin(teams, opts = {}) {
   const courts = Math.max(1, opts.courts | 0 || 1);
-  if (teams.length < 2) throw new Error('至少需要 2 支队伍');
+  if (teams.length < 2) throw new Error('needTeams');
   const list = teams.slice();
   if (list.length % 2) list.push(null); // 轮空占位
   const n = list.length;

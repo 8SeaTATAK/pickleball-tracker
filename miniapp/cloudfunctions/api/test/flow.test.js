@@ -185,5 +185,9 @@ test('固定搭档与单打循环、未知 action', async () => {
   const res = await as('own')('nope');
   assert.ok(!res.ok);
   const bad = await as('own')('createEvent', { clubId, title: 'T', startTime: 20, endTime: 10, courts: 1, capacity: 4, fee: 0 });
-  assert.match(bad.error, /结束时间/);
+  assert.strictEqual(bad.error, 'endBeforeStart');
+  const tooLong = await as('own')('createClub', { name: 'x'.repeat(31) });
+  assert.deepStrictEqual([tooLong.error, tooLong.params], ['tooLong', { field: 'clubName', max: 30 }]);
+  const few = await as('own')('generateSchedule', { eventId, mode: 'rotation', playerIds: [ids[0], ids[1]] });
+  assert.deepStrictEqual([few.error, few.params], ['needPlayers', { n: 4 }]);
 });
