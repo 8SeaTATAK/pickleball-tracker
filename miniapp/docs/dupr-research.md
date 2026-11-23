@@ -108,6 +108,16 @@ Reclub、CourtReserve、Pickleheads、Scoreholio 等已接入 DUPR：把 DUPR Cl
   - 我们自己的俱乐部评分也按规则 v1 的「定级期」走（可靠度不到 60% 显示「萌新·定级中（3/10）」）；
   - 还没 DUPR 的新人先做「水平自测」，得出 2.5 / 3.0 / 3.5 / 4.0 作为起始分。
 
+### 官方定级途径：DUPR Coach（教练定级）
+
+- 持 **DUPR Coach 认证**的教练，可以给**从没在 DUPR 打过比赛的新人**直接定一个起始 DUPR 分（Coach-Assigned DUPR）：现场办「DUPR 定级课」（Rating Session），或者看球员上传的比赛视频评估。之后打比赛，分数再按比赛结果正常变化。
+- 只适用于没有比赛记录的新人；已经有 DUPR 比赛记录的人不能用。
+- 教练条件：本人有基于比赛记录的 DUPR 分，并完成线上自学认证课程。
+- 费用：教练年费 **250 美元**（自动续费）；**DUPR 俱乐部的教练打 8 折，200 美元**。俱乐部可以给多名员工认证。
+- 球员不用付 DUPR 费用。教练可以收定级费（美国一般约 35 美元/人），DUPR 不抽成。
+- 建议：俱乐部挑一名分数稳定的教练考认证，新人先上定级课拿起始分，再参加上面的新人定级场，比只靠比赛定级快、更准。小程序可加「定级课」活动类型，报名收费走 AA / 收款流程。
+- 来源：[Become a DUPR Coach](https://www.dupr.com/become-a-dupr-coach)、[Coach Certification](https://www.duprcoach.com/coach-cert)、[如何办现场定级课](https://info.duprcoach.com/resources/coach-assigned-rating)、[How to become a DUPR Coach](https://www.dupr.com/post/how-to-become-a-dupr-coach)、[用 DUPR 拓展教练业务](https://www.dupr.com/post/how-to-grow-your-pickleball-coaching-business-with-dupr)
+
 ## 八、小程序怎么连 DUPR：分三步
 
 ### 第 0 步：不需要 DUPR 批准，现在就能做（建议先做）
