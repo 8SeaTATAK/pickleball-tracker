@@ -382,3 +382,38 @@ test('多语言：跟随系统语言、手动切换、错误提示翻译', async
   assert.strictEqual(ed.data.modes.length, 1, '目前只开放八人转');
   await flush();
 });
+
+test('水平自测：答题 → 保存 → 结果 → 设为起始水平；前后端计分模块一致', async () => {
+  const fs = require('fs');
+  const lib = fs.readFileSync(path.join(__dirname, '../lib/selfTest.js'), 'utf8');
+  const fe = fs.readFileSync(path.join(MP, 'utils/selfTest.js'), 'utf8');
+  assert.strictEqual(fe.split('\n').slice(1).join('\n'), lib, 'miniprogram/utils/selfTest.js 要和云函数里的一致');
+
+  const { open, flush, app } = setupEnv();
+  const p = open('pages/selftest/selftest');
+  await p.onLoad({});
+  assert.strictEqual(p.data.mode, 'quiz');
+  assert.ok(p.data.q.title && p.data.q.options.length === 5);
+  const pick = (o) => p.pick({ currentTarget: { dataset: { o } } });
+  await p.next(); // 没选不能下一步
+  assert.strictEqual(p.data.step, 0);
+  for (const o of [3, 2, 4, 3, 2, 3, 2, 3, 4, 3]) {
+    pick(o);
+    await p.next();
+  }
+  await flush();
+  assert.strictEqual(p.data.mode, 'result');
+  assert.strictEqual(p.data.res.rating, '3.0');
+  assert.strictEqual(p.data.res.weak.length, 2);
+  assert.strictEqual(p.data.canApply, true);
+  await p.apply();
+  assert.strictEqual(app.globalData.user.doubles.rating, 3.0);
+  assert.strictEqual(p.data.canApply, false);
+
+  // 再次进入直接看结果；retake=1 重新答题
+  const p2 = open('pages/selftest/selftest');
+  await p2.onLoad({});
+  assert.strictEqual(p2.data.mode, 'result');
+  p2.retake();
+  assert.strictEqual(p2.data.mode, 'quiz');
+});

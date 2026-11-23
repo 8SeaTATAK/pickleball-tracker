@@ -7,6 +7,7 @@ const match = require('./handlers/match');
 const actions = {
   login: user.login,
   updateProfile: user.updateProfile,
+  saveSelfTest: user.saveSelfTest,
   getPlayer: user.getPlayer,
   myMatches: user.myMatches,
   myEvents: user.myEvents,

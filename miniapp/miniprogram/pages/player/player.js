@@ -104,8 +104,8 @@ Page({
           const x = (i) => pad.l + ((W - pad.l - pad.r) * i) / (vals.length - 1);
           const y = (v) => pad.t + ((H - pad.t - pad.b) * (hi - v)) / (hi - lo);
 
-          ctx.strokeStyle = '#e2e0d8';
-          ctx.fillStyle = '#71776f';
+          ctx.strokeStyle = '#f0e4d4';
+          ctx.fillStyle = '#8a7563';
           ctx.font = '10px sans-serif';
           ctx.lineWidth = 1;
           [hi, (hi + lo) / 2, lo].forEach((v) => {
@@ -116,12 +116,12 @@ Page({
             ctx.fillText(v.toFixed(2), 2, y(v) + 3);
           });
 
-          ctx.strokeStyle = '#216b43';
+          ctx.strokeStyle = '#1478c8';
           ctx.lineWidth = 2;
           ctx.beginPath();
           vals.forEach((v, i) => (i ? ctx.lineTo(x(i), y(v)) : ctx.moveTo(x(i), y(v))));
           ctx.stroke();
-          ctx.fillStyle = '#216b43';
+          ctx.fillStyle = '#1478c8';
           ctx.beginPath();
           ctx.arc(x(vals.length - 1), y(vals[vals.length - 1]), 3, 0, Math.PI * 2);
           ctx.fill();

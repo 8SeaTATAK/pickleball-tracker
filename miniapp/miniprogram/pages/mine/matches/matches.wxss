@@ -1,4 +1,4 @@
 .wl { width: 56rpx; height: 56rpx; border-radius: 12rpx; text-align: center; line-height: 56rpx; font-weight: 700; color: #fff; flex-shrink: 0; }
 .wl.w { background: var(--up); }
-.wl.l { background: #b8bcb3; }
+.wl.l { background: #c9b8a6; }
 .wl.p { background: var(--turf-light); color: var(--turf); }

@@ -288,3 +288,22 @@ test('环境变量 VIP_OPENIDS 里的账号是永久 VIP', async () => {
     delete process.env.VIP_OPENIDS;
   }
 });
+
+test('内容安全：违规文字被拒绝，正常文字通过', async () => {
+  const { dispatch } = require('../router');
+  const { createMockDb } = require('./mockdb');
+  const db = createMockDb();
+  const ctx = { db, _: db.command, openid: 'o_sec', now: () => Date.now(), secCheck: async (s) => (s.includes('违规') ? 'risky' : 'pass') };
+  await dispatch(ctx, { action: 'login' });
+  let r = await dispatch(ctx, { action: 'updateProfile', nickName: '违规昵称' });
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.error, 'contentRisky');
+  assert.strictEqual(r.params.field, 'nickName');
+  r = await dispatch(ctx, { action: 'createClub', name: '正常俱乐部', intro: '这里有违规内容' });
+  assert.strictEqual(r.error, 'contentRisky');
+  assert.strictEqual(r.params.field, 'intro');
+  r = await dispatch(ctx, { action: 'createClub', name: '正常俱乐部' });
+  assert.strictEqual(r.ok, true);
+  r = await dispatch(ctx, { action: 'createEvent', clubId: r.data.clubId, title: '违规活动', startTime: Date.now() + 864e5, endTime: Date.now() + 9e7, courts: 2, capacity: 8, fee: 0 });
+  assert.strictEqual(r.error, 'contentRisky');
+});

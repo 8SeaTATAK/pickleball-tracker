@@ -1,5 +1,5 @@
 {
-  "description": "匹克球助手：俱乐部运营、比赛计分、积分榜、模拟 DUPR 评分",
+  "description": "匹克球助手：俱乐部运营、比赛计分、积分榜、俱乐部评分",
   "miniprogramRoot": "miniprogram/",
   "cloudfunctionRoot": "cloudfunctions/",
   "compileType": "miniprogram",

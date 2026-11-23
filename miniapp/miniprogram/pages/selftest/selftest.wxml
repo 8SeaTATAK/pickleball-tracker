@@ -1,0 +1,57 @@
+<view class="page">
+  <block wx:if="{{mode == 'quiz' && q}}">
+    <view class="card">
+      <view class="h">{{t.st_introT}}</view>
+      <view class="muted">{{t.st_introS}}</view>
+      <view class="prog">{{step + 1}} / {{total}}</view>
+      <view class="bar"><view class="fill" style="width: {{q.pct}}%"></view></view>
+    </view>
+    <view class="card">
+      <view class="h">{{q.title}}</view>
+      <view wx:for="{{q.options}}" wx:key="o" class="opt {{ans[step] == item.o ? 'on' : ''}}" bindtap="pick" data-o="{{item.o}}">
+        <view class="radio"></view>
+        <text>{{item.text}}</text>
+      </view>
+    </view>
+    <view class="btn-row">
+      <button class="btn ghost" wx:if="{{step > 0}}" bindtap="prev">{{t.st_prev}}</button>
+      <button class="btn" bindtap="next" disabled="{{!ans[step] || saving}}">{{step == total - 1 ? t.st_finish : t.st_next}}</button>
+    </view>
+    <view class="muted foot">{{t.st_foot}}</view>
+  </block>
+
+  <block wx:if="{{mode == 'result' && res}}">
+    <view class="card center">
+      <view class="muted">{{t.st_resS}}</view>
+      <view class="big">{{res.rating}}</view>
+      <view class="bold">{{res.title}}</view>
+      <view class="muted">{{res.avgLine}}</view>
+      <view class="muted small">{{t.st_resNote}}</view>
+    </view>
+    <view class="card">
+      <view class="h">{{t.st_dims}}</view>
+      <view class="dim" wx:for="{{res.dims}}" wx:key="name">
+        <text class="n">{{item.name}}</text>
+        <view class="b"><view class="fill" style="width: {{item.pct}}%"></view></view>
+        <text class="v">{{item.a}}/5</text>
+      </view>
+    </view>
+    <view class="card">
+      <view class="h">{{t.st_nextT}}</view>
+      <block wx:if="{{res.weak.length}}">
+        <view class="muted">{{t.st_nextHint}}</view>
+        <view class="next" wx:for="{{res.weak}}" wx:key="name"><view class="bold">{{item.name}}</view><text>{{item.goal}}</text></view>
+      </block>
+      <view class="muted" wx:else>{{t.st_allTop}}</view>
+    </view>
+    <block wx:if="{{canApply}}">
+      <button class="btn" bindtap="apply">{{res.applyText}}</button>
+      <view class="muted foot">{{t.st_applySeed}}</view>
+    </block>
+    <view class="btn-row">
+      <button class="btn ghost" bindtap="retake">{{t.st_retry}}</button>
+      <button class="btn ghost" bindtap="goLevels">{{t.menu_levels}}</button>
+    </view>
+    <view class="muted foot">{{t.st_foot}}</view>
+  </block>
+</view>

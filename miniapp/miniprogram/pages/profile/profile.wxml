@@ -40,16 +40,17 @@
     <view class="cell" bindtap="go" data-url="/pages/mine/events/events"><image class="ic ball" src="/images/pickleball.png" /><text>{{t.menu_events}}</text></view>
     <view class="cell" bindtap="go" data-url="/pages/mine/matches/matches"><image class="ic ball" src="/images/paddle.png" /><text>{{t.menu_matches}}</text></view>
     <view class="cell" bindtap="goRating"><image class="ic ball" src="/images/trophy.png" /><text>{{t.menu_rating}}</text></view>
-    <view class="cell" bindtap="go" data-url="/pages/guide/guide?topic=levels"><image class="ic ball" src="/images/levels.png" /><text>{{t.menu_levels}}</text></view>
+    <view class="cell" bindtap="go" data-url="/pages/selftest/selftest"><image class="ic ball" src="/images/selftest.png" /><text>{{t.menu_selfTest}}</text></view>
     <view class="cell" bindtap="go" data-url="/pages/guide/guide?topic=formats"><image class="ic ball" src="/images/formats.png" /><text>{{t.menu_formats}}</text></view>
     <view class="cell" bindtap="go" data-url="/pages/guide/guide?topic=start"><image class="ic ball" src="/images/guide.png" /><text>{{t.menu_guide}}</text></view>
     <view class="cell" bindtap="goClubs"><image class="ic ball" src="/images/club.png" /><text>{{t.myClubs}}</text></view>
-        <button class="cell plain" open-type="contact"><image class="ic ball" src="/images/contact.png" /><text>{{t.menu_contact}}</text></button>
+    <button class="cell plain" open-type="contact"><image class="ic ball" src="/images/contact.png" /><text>{{t.menu_contact}}</text></button>
   </view>
 
   <!-- 列表 -->
   <view class="card list">
     <view class="li" bindtap="go" data-url="/pages/profile/edit"><text class="li-ic">✏️</text><text class="grow">{{t.editProfile}}</text><text class="arrow">›</text></view>
+    <view class="li" bindtap="go" data-url="/pages/guide/guide?topic=levels"><text class="li-ic">📊</text><text class="grow">{{t.menu_levels}}</text><text class="arrow">›</text></view>
     <button class="li plain" open-type="feedback"><text class="li-ic">✍️</text><text class="grow">{{t.menu_feedback}}</text><text class="arrow">›</text></button>
     <button class="li plain" open-type="share"><text class="li-ic">🤝</text><text class="grow">{{t.menu_invite}}</text><text class="arrow">›</text></button>
     <picker range="{{langNames}}" value="{{langIdx}}" bindchange="onLang">

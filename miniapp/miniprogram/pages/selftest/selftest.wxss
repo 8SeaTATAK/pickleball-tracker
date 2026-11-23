@@ -1,0 +1,17 @@
+.h { font-size: 34rpx; font-weight: 700; margin-bottom: 12rpx; }
+.prog { margin-top: 24rpx; font-weight: 700; color: var(--turf); }
+.bar, .dim .b { height: 12rpx; border-radius: 6rpx; background: var(--line); overflow: hidden; margin-top: 12rpx; }
+.fill { height: 100%; background: var(--turf); }
+.opt { display: flex; align-items: center; gap: 24rpx; border: 2rpx solid var(--line); border-radius: 24rpx; padding: 26rpx 24rpx; margin-top: 20rpx; font-size: 28rpx; line-height: 1.5; }
+.opt .radio { flex: none; width: 40rpx; height: 40rpx; border-radius: 50%; border: 3rpx solid var(--line); box-sizing: border-box; }
+.opt.on { border-color: var(--turf); background: var(--turf-light); }
+.opt.on .radio { border: 12rpx solid var(--turf); }
+.foot { text-align: center; font-size: 24rpx; margin: 8rpx 0 24rpx; }
+.center { text-align: center; }
+.big { font-size: 88rpx; font-weight: 700; color: var(--turf); line-height: 1.2; margin: 8rpx 0; }
+.small { font-size: 24rpx; margin-top: 12rpx; }
+.dim { display: flex; align-items: center; gap: 20rpx; font-size: 26rpx; margin-top: 18rpx; }
+.dim .n { width: 9.5em; flex: none; }
+.dim .b { flex: 1; margin-top: 0; }
+.dim .v { width: 56rpx; text-align: right; color: var(--muted); }
+.next { border-left: 6rpx solid var(--turf); background: var(--turf-light); border-radius: 12rpx; padding: 16rpx 20rpx; margin-top: 20rpx; font-size: 26rpx; line-height: 1.6; }

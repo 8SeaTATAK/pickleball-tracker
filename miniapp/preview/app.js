@@ -8,6 +8,7 @@ const i18n = __req('i18n');
 const fmt = __req('fmt');
 const { predict } = __req('predict');
 const PR = __req('profileRules');
+const ST = __req('selfTest');
 
 const ME = 'me';
 const STORE = 'pp_state_v20';
@@ -44,7 +45,7 @@ const PEOPLE = [
 ];
 const FEMALE = ['alice', 'linh', 'nurul', 'emily', 'sarah', 'huong'];
 const NON_MEMBERS = ['tom', 'huong']; // 只来过公开比赛的球友
-const COLORS = ['#216b43', '#b95c30', '#3c6e9c', '#7b5aa6', '#a0722a', '#2f8a83', '#a64b6b', '#58753a'];
+const COLORS = ['#1478c8', '#e0701f', '#3c6e9c', '#7b5aa6', '#a0722a', '#2f8a83', '#a64b6b', '#58753a'];
 
 function seed() {
   const rand = S.mulberry32(20261121);
@@ -953,7 +954,7 @@ function viewMe(t) {
     ${cell('myEvents', ICONS.pickleball, 'ball', t.menu_events)}
     ${cell('myMatches', ICONS.paddle, 'ball', t.menu_matches)}
     ${cell('player', ICONS.trophy, 'ball', t.menu_rating, `data-id="${ME}"`)}
-    ${cell('levels', ICONS.levels, 'ball', t.menu_levels)}
+    ${cell('selfTest', ICONS.selftest, 'ball', t.menu_selfTest)}
     ${cell('formats', ICONS.formats, 'ball', t.menu_formats, 'data-mode="rotation"')}
     ${cell('guide', ICONS.guide, 'ball', t.menu_guide, 'data-topic="start"')}
     ${cell('tab', ICONS.club, 'ball', t.myClubs, 'data-tab="home"')}
@@ -962,11 +963,70 @@ function viewMe(t) {
   </div>
   <div class="card mlist">
     ${li('edit', '✏️', t.editProfile)}
+    ${li('levels', '📊', t.menu_levels)}
     ${li('myInvites', '📨', t.myInvites)}
     ${li('premium', '⭐', t.premiumTitle)}
     ${li('feedback', '✍️', t.menu_feedback)}
     ${li('na', '🤝', t.menu_invite)}
   </div>`;
+}
+
+// 水平自测：一屏一题，最后保存结果（独立于评分，可选择设为匹克球等级）
+function viewSelfTest(t) {
+  const s = ui.selfTest;
+  const d = s.step + 1;
+  return `
+  <div class="card st-intro">
+    <h3>${t.st_introT}</h3>
+    <div class="muted">${t.st_introS}</div>
+    <div class="st-prog num">${d} / ${ST.DIMS}</div>
+    <div class="st-bar"><i style="width:${(d / ST.DIMS) * 100}%"></i></div>
+  </div>
+  <div class="card">
+    <h3>${t['st_d' + d]}</h3>
+    ${[1, 2, 3, 4, 5].map((o) => `<button class="st-opt ${s.ans[s.step] === o ? 'on' : ''}" data-act="stPick" data-o="${o}" aria-pressed="${s.ans[s.step] === o}"><span class="st-r"></span><span>${t['st_d' + d + '_' + o]}</span></button>`).join('')}
+  </div>
+  <div class="st-btns">
+    ${s.step ? `<button class="btn ghost" data-act="stPrev">${t.st_prev}</button>` : ''}
+    <button class="btn" data-act="stNext" ${s.ans[s.step] ? '' : 'disabled'}>${s.step === ST.DIMS - 1 ? t.st_finish : t.st_next}</button>
+  </div>
+  <div class="muted center st-foot">${t.st_foot}</div>`;
+}
+
+const selfTitle = (r) => i18n.t(r >= 4 ? 'lv_4' : r >= 3.5 ? 'lv_3' : r >= 3 ? 'lv_2' : 'lv_1');
+
+function viewSelfResult(t) {
+  const u = st.users[ME];
+  const r = u.selfTest;
+  const weak = ST.weakest(r.answers);
+  const pb = u.pbLevel;
+  const same = pb && pb.type === 'self' && pb.value === r.rating;
+  const lockedAt = PR.nextChangeAt(u, 'pbLevel', Date.now());
+  const fresh = !u.doubles.games && !u.singles.games;
+  let applyHtml = '';
+  if (pb && pb.type === 'dupr') applyHtml = `<div class="muted center">${t.st_isDupr}</div>`;
+  else if (same) applyHtml = `<div class="muted center">✓ ${t.st_applied}</div>`;
+  else if (lockedAt) applyHtml = `<div class="muted center">${t.pbLevel}: ${esc(f(t.nextChangeHint, i18n.dayMonth(lockedAt)))}</div>`;
+  else applyHtml = `<button class="btn" data-act="stApply">${esc(f(t.st_apply, r.rating.toFixed(1)))}</button>${fresh ? `<div class="muted center">${t.st_applySeed}</div>` : ''}`;
+  return `
+  <div class="card center st-res">
+    <div class="muted">${t.st_resS}</div>
+    <div class="st-big num">${r.rating.toFixed(1)}</div>
+    <div class="bold">${esc(selfTitle(r.rating))} · ${esc(t[levelKey(r.rating)])}</div>
+    <div class="muted num">${esc(f(t.st_avg, r.avg.toFixed(1), f(t.st_last, i18n.dayMonth(r.at))))}</div>
+    <div class="muted st-note">${t.st_resNote}</div>
+  </div>
+  <div class="card">
+    <h3>${t.st_dims}</h3>
+    ${r.answers.map((a, i) => `<div class="st-dim"><span class="n">${t['st_d' + (i + 1)]}</span><span class="b"><i style="width:${a * 20}%"></i></span><span class="v num">${a}/5</span></div>`).join('')}
+  </div>
+  <div class="card">
+    <h3>${t.st_nextT}</h3>
+    ${weak.length ? `<div class="muted">${t.st_nextHint}</div>${weak.map((i) => `<div class="st-next"><b>${t['st_d' + (i + 1)]}</b>${t['st_d' + (i + 1) + '_' + (r.answers[i] + 1)]}</div>`).join('')}` : `<div class="muted">${t.st_allTop}</div>`}
+  </div>
+  ${applyHtml}
+  <div class="st-btns"><button class="btn ghost" data-act="stRetry">${t.st_retry}</button><button class="btn ghost" data-act="levels">${t.menu_levels}</button></div>
+  <div class="muted center st-foot">${t.st_foot}</div>`;
 }
 
 const SELF_LEVELS = [2.5, 3.0, 3.5, 4.0]; // 与《评分与级别规则 v1》自评问卷的四个结果一致
@@ -1865,6 +1925,12 @@ function render() {
   } else if (v.view === 'players') {
     title = t.playerList;
     html = viewPlayers(t, v.id);
+  } else if (v.view === 'selfTest') {
+    title = t.st_title;
+    html = viewSelfTest(t);
+  } else if (v.view === 'selfResult') {
+    title = t.st_title;
+    html = viewSelfResult(t);
   } else if (v.view === 'levels') {
     title = t.lvPageTitle;
     html = viewLevels(t);
@@ -2173,6 +2239,44 @@ const actions = {
   lvTab(d) {
     ui.lvTab = d.k;
     rerender(false);
+  },
+  selfTest() {
+    const u = st.users[ME];
+    if (u.selfTest) return go({ view: 'selfResult' });
+    actions.stRetry();
+  },
+  stRetry() {
+    ui.selfTest = { step: 0, ans: Array(ST.DIMS).fill(0) };
+    if (top() && top().view === 'selfResult') ui.stack.pop();
+    go({ view: 'selfTest' });
+  },
+  stPick(d) {
+    ui.selfTest.ans[ui.selfTest.step] = Number(d.o);
+    rerender();
+  },
+  stPrev() {
+    ui.selfTest.step--;
+    rerender(false);
+  },
+  stNext() {
+    const s = ui.selfTest;
+    if (!s.ans[s.step]) return;
+    if (s.step < ST.DIMS - 1) {
+      s.step++;
+      return rerender(false);
+    }
+    const r = ST.score(s.ans);
+    st.users[ME].selfTest = { answers: s.ans.slice(), rating: r.rating, avg: r.avg, at: Date.now() };
+    save();
+    ui.stack.pop();
+    go({ view: 'selfResult' });
+  },
+  stApply() {
+    // 走编辑资料的同一套保存逻辑（30 天限制、没打过比赛时作为起始评分）
+    actions.edit();
+    ui.edit.pb = { type: 'self', value: st.users[ME].selfTest.rating };
+    actions.saveEdit();
+    if (top() && top().view === 'selfResult' && st.users[ME].pbLevel && st.users[ME].pbLevel.value === st.users[ME].selfTest.rating) toast(i18n.t('st_applied'));
   },
   selfRate() {
     actions.edit();

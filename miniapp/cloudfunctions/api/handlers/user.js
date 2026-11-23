@@ -1,7 +1,8 @@
 const { getDoc, listAll, getByIds } = require('../lib/db');
 const { MIN_RATING, reliability } = require('../lib/rating');
 const { checkChange, nextChangeAt } = require('../lib/profileRules');
-const { fail, newRatingBlock, publicUser, usersMap, str } = require('./common');
+const selfTest = require('../lib/selfTest');
+const { fail, newRatingBlock, publicUser, usersMap, str, checkText } = require('./common');
 
 // 自评起始水平（参考 DUPR / USAP 自评描述），只在还没打过比赛时可设置
 const LEVELS = [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0];
@@ -30,6 +31,7 @@ async function login(ctx, params = {}) {
   return {
     ...publicUser(u),
     leveled: !!u.leveled,
+    selfTest: u.selfTest || null,
     nextNameChangeAt: nextChangeAt(u, 'nickName', now),
     nextAvatarChangeAt: nextChangeAt(u, 'avatar', now),
   };
@@ -51,6 +53,9 @@ async function updateProfile(ctx, { nickName, avatarUrl, gender, level }) {
     if (!r.allowed) fail(err, { at: r.nextAt });
     Object.assign(data, r.data, { [field === 'avatar' ? 'avatarUrl' : 'nickName']: value });
   }
+  if (data.nickName) await checkText(ctx, { nickName: data.nickName }, 1);
+  // 头像：异步送审（结果由微信推送，违规的在后台处理），不阻塞保存
+  if (data.avatarUrl && ctx.secCheckImage) ctx.secCheckImage(data.avatarUrl).catch(() => {});
   if (gender != null) {
     if (!['', 'm', 'f'].includes(gender)) fail('invalidGender');
     data.gender = gender;
@@ -64,6 +69,25 @@ async function updateProfile(ctx, { nickName, avatarUrl, gender, level }) {
     data.leveled = true;
   }
   if (Object.keys(data).length) await db.collection('users').doc(openid).update({ data });
+  return login(ctx);
+}
+
+// 水平自测：结果独立保存，不改评分。apply = true 且还没打过比赛时，把结果设为起始水平。
+async function saveSelfTest(ctx, { answers, apply }) {
+  const { db, openid } = ctx;
+  const u = await getDoc(db, 'users', openid);
+  if (!u) fail('notLoggedIn');
+  const ans = Array.isArray(answers) ? answers.map(Number) : null;
+  const r = selfTest.score(ans);
+  if (!r) fail('invalidSelfTest');
+  const data = { selfTest: { answers: ans, rating: r.rating, avg: r.avg, at: ctx.now() } };
+  if (apply) {
+    if (u.doubles.games || u.singles.games) fail('levelLocked');
+    data.doubles = newRatingBlock(r.rating);
+    data.singles = newRatingBlock(r.rating);
+    data.leveled = true;
+  }
+  await db.collection('users').doc(openid).update({ data });
   return login(ctx);
 }
 
@@ -168,4 +192,4 @@ async function myEvents(ctx) {
     .sort((a, b) => b.startTime - a.startTime);
 }
 
-module.exports = { login, updateProfile, getPlayer, myMatches, myEvents, LEVELS };
+module.exports = { login, updateProfile, saveSelfTest, getPlayer, myMatches, myEvents, LEVELS };

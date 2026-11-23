@@ -155,3 +155,19 @@ test('头像/昵称修改规则', () => {
   assert.deepStrictEqual(checkChange({}, 'pbLevel', now), { allowed: true, data: { pbLevelFirstSet: true } });
   assert.strictEqual(nextChangeAt({ pbLevelFirstSet: true, pbLevelChangedAt: now - 1000 }, 'pbLevel', now), now - 1000 + COOLDOWN);
 });
+
+test('水平自测：平均分换算起始分，最高 4.0', () => {
+  const ST = require('../lib/selfTest');
+  const all = (v) => Array(10).fill(v);
+  assert.strictEqual(ST.score(all(1)).rating, 2.5);
+  assert.strictEqual(ST.score([1, 1, 1, 1, 1, 2, 2, 2, 2, 2]).rating, 2.5); // 平均 1.5
+  assert.strictEqual(ST.score(all(2)).rating, 3.0);
+  assert.strictEqual(ST.score(all(3)).rating, 3.5);
+  assert.strictEqual(ST.score([3, 3, 3, 3, 3, 3, 3, 3, 3, 4]).rating, 3.5); // 平均 3.1
+  assert.strictEqual(ST.score(all(4)).rating, 4.0);
+  assert.strictEqual(ST.score(all(5)).rating, 4.0);
+  assert.strictEqual(ST.score(all(5).slice(1)), null);
+  assert.strictEqual(ST.score([0, 1, 1, 1, 1, 1, 1, 1, 1, 1]), null);
+  assert.deepStrictEqual(ST.weakest([3, 1, 5, 1, 2, 5, 5, 5, 5, 5]), [1, 3]);
+  assert.deepStrictEqual(ST.weakest(all(5)), []);
+});

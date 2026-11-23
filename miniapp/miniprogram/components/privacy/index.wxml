@@ -1,0 +1,10 @@
+<view class="mask" wx:if="{{show}}" catchtouchmove="noop">
+  <view class="box">
+    <view class="h">{{t.privacyTitle}}</view>
+    <view class="p">{{t.privacyBody}}<text class="link" bindtap="open">{{name}}</text></view>
+    <view class="row">
+      <button class="no" bindtap="disagree">{{t.privacyNo}}</button>
+      <button class="yes" id="privacy-agree" open-type="agreePrivacyAuthorization" bindagreeprivacyauthorization="agree">{{t.privacyYes}}</button>
+    </view>
+  </view>
+</view>

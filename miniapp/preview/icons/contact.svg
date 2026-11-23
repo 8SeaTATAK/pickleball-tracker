@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="contact">
   <!-- 联系客服：墨绿对话气泡 + 米白圆点，后面一个橙色小气泡 -->
   <path d="M27 6 H41 A4 4 0 0 1 45 10 V19 A4 4 0 0 1 41 23 H39 L40 28 L34 23 H27 A4 4 0 0 1 23 19 V10 A4 4 0 0 1 27 6 Z" fill="#E2772B"/>
-  <path d="M8 13 H32 A5 5 0 0 1 37 18 V32 A5 5 0 0 1 32 37 H18 L10 44 L11.5 37 H8 A5 5 0 0 1 3 32 V18 A5 5 0 0 1 8 13 Z" fill="#2E6E6A"/>
+  <path d="M8 13 H32 A5 5 0 0 1 37 18 V32 A5 5 0 0 1 32 37 H18 L10 44 L11.5 37 H8 A5 5 0 0 1 3 32 V18 A5 5 0 0 1 8 13 Z" fill="#1E96E6"/>
   <g fill="#F6EBDD"><circle cx="12" cy="25" r="2.4"/><circle cx="20" cy="25" r="2.4"/><circle cx="28" cy="25" r="2.4"/></g>
 </svg>

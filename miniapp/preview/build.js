@@ -13,6 +13,7 @@ const mods = {
   i18n: 'miniprogram/utils/i18n.js',
   fmt: 'miniprogram/utils/fmt.js',
   predict: 'miniprogram/utils/predict.js',
+  selfTest: 'cloudfunctions/api/lib/selfTest.js',
 };
 
 const bundle = Object.entries(mods)

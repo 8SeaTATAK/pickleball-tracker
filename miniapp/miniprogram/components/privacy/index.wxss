@@ -1,0 +1,9 @@
+.mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(20, 24, 20, 0.5); z-index: 9999; display: flex; align-items: flex-end; }
+.box { width: 100%; background: #fff; border-radius: 32rpx 32rpx 0 0; padding: 40rpx 40rpx calc(40rpx + env(safe-area-inset-bottom)); box-sizing: border-box; }
+.h { font-size: 34rpx; font-weight: 700; margin-bottom: 20rpx; }
+.p { font-size: 28rpx; line-height: 1.7; color: #444; }
+.link { color: #1478c8; }
+.row { display: flex; gap: 24rpx; margin-top: 40rpx; }
+.row .no, .row .yes { flex: 1; margin: 0; border-radius: 999rpx; font-size: 30rpx; }
+.no { background: #f3ebe0; color: #333; }
+.yes { background: #1478c8; color: #fff; }

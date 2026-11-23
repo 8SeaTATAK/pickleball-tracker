@@ -10,6 +10,7 @@ const {
   requireAdmin,
   str,
   int,
+  checkText,
 } = require('./common');
 
 const CURRENCIES = ['A$', '¥', 'RM', 'S$', '₫', '$'];
@@ -40,6 +41,7 @@ async function createClub(ctx, { name, intro, city }) {
     settings: { ...DEFAULT_SETTINGS },
     createdAt: ctx.now(),
   };
+  await checkText(ctx, { clubName: data.name, intro: data.intro, city: data.city });
   // 先校验填写内容，再查数量上限：普通用户 1 个，VIP 3 个（见 PRODUCT_RULES.md）
   const me = await getDoc(db, 'users', ctx.openid);
   const limit = me && isVip(me, ctx.now()) ? 3 : 1;
@@ -62,6 +64,7 @@ async function updateClub(ctx, { clubId, name, intro, city, winPoints, lossPoint
     if (!CURRENCIES.includes(currency)) fail('invalidCurrency');
     data['settings.currency'] = currency;
   }
+  await checkText(ctx, { clubName: data.name, intro: data.intro, city: data.city });
   await ctx.db.collection('clubs').doc(clubId).update({ data });
   return {};
 }
@@ -154,9 +157,11 @@ async function addGuest(ctx, { clubId, name, level }) {
   await requireAdmin(ctx, clubId);
   const lv = level == null ? undefined : Number(level);
   const id = 'guest_' + randomCode(10).toLowerCase();
+  const nickName = str(name, 20, 'name', true);
+  await checkText(ctx, { name: nickName }, 1);
   await ctx.db.collection('users').doc(id).set({
     data: {
-      nickName: str(name, 20, 'name', true),
+      nickName,
       avatarUrl: '',
       guest: true,
       createdBy: ctx.openid,

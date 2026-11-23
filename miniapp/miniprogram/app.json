@@ -3,6 +3,7 @@
     "pages/index/index",
     "pages/profile/profile",
     "pages/profile/edit",
+    "pages/selftest/selftest",
     "pages/player/player",
     "pages/mine/events/events",
     "pages/mine/matches/matches",
@@ -14,16 +15,16 @@
     "pages/rules/rules"
   ],
   "window": {
-    "navigationBarBackgroundColor": "#216b43",
+    "navigationBarBackgroundColor": "#1e96e6",
     "navigationBarTextStyle": "white",
     "navigationBarTitleText": "匹克球助手",
-    "backgroundColor": "#f6f5f1",
+    "backgroundColor": "#fff7ec",
     "backgroundTextStyle": "dark"
   },
   "tabBar": {
     "custom": true,
-    "color": "#71776f",
-    "selectedColor": "#216b43",
+    "color": "#8a7563",
+    "selectedColor": "#1478c8",
     "backgroundColor": "#ffffff",
     "borderStyle": "white",
     "list": [
@@ -40,5 +41,7 @@
   "style": "v2",
   "sitemapLocation": "sitemap.json",
   "lazyCodeLoading": "requiredComponents",
-  "usingComponents": {}
+  "usingComponents": {
+    "privacy": "/components/privacy/index"
+  }
 }

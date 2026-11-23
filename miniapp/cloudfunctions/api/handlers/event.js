@@ -1,6 +1,6 @@
 const { getDoc, listAll, getByIds } = require('../lib/db');
 const { aggregate } = require('../lib/stats');
-const { fail, usersMap, getMember, isAdminRole, requireAdmin, requireMember, str, int } = require('./common');
+const { fail, usersMap, getMember, isAdminRole, requireAdmin, requireMember, str, int, checkText } = require('./common');
 
 const signupId = (eventId, userId) => `${eventId}_${userId}`;
 
@@ -35,6 +35,7 @@ async function createEvent(ctx, p) {
     joinedCount: 0,
     createdAt: ctx.now(),
   };
+  await checkText(ctx, { title: data.title, location: data.location, note: data.note });
   const { _id } = await ctx.db.collection('events').add({ data });
   return { eventId: _id };
 }
@@ -50,6 +51,7 @@ async function updateEvent(ctx, p) {
   const start = data.startTime != null ? data.startTime : ev.startTime;
   const end = data.endTime != null ? data.endTime : ev.endTime;
   if (end <= start) fail('endBeforeStart');
+  await checkText(ctx, { title: data.title, location: data.location, note: data.note });
   await ctx.db.collection('events').doc(ev._id).update({ data });
   return {};
 }

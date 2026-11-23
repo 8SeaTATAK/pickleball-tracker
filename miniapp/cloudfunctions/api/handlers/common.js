@@ -61,6 +61,17 @@ function str(v, max, name, required = false) {
   return s;
 }
 
+// 内容安全：用户填写的文字先过微信 msgSecCheck（ctx.secCheck 由云函数入口注入，测试里没有就跳过）。
+// fields：{ 字段名: 文字 }，任一项判定为违规就整次拒绝，错误代码 contentRisky。
+// scene：1 资料（昵称等），3 论坛（俱乐部、活动等公开内容）
+async function checkText(ctx, fields, scene = 3) {
+  if (!ctx.secCheck) return;
+  for (const [field, text] of Object.entries(fields)) {
+    if (!text) continue;
+    if ((await ctx.secCheck(text, scene)) === 'risky') fail('contentRisky', { field });
+  }
+}
+
 function int(v, lo, hi, name) {
   const n = Number(v);
   if (!Number.isInteger(n) || n < lo || n > hi) fail('intRange', { field: name, lo, hi });
@@ -69,6 +80,7 @@ function int(v, lo, hi, name) {
 
 module.exports = {
   AppError,
+  checkText,
   fail,
   newRatingBlock,
   publicUser,

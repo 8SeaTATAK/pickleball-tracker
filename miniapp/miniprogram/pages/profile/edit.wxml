@@ -34,3 +34,4 @@
 
   <button class="btn" bindtap="save" disabled="{{saving || !nickName}}">{{t.save}}</button>
 </view>
+<privacy />

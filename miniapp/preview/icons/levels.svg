@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="levels">
   <!-- 等级：三级领奖台 + 最高处一颗黄球 -->
-  <rect x="5" y="30" width="12" height="14" rx="2" fill="#2E6E6A"/>
+  <rect x="5" y="30" width="12" height="14" rx="2" fill="#1E96E6"/>
   <rect x="18" y="20" width="12" height="24" rx="2" fill="#E2772B"/>
   <rect x="31" y="25" width="12" height="19" rx="2" fill="#4A1E12"/>
   <text x="11" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="7" fill="#F6EBDD">3.0</text>
