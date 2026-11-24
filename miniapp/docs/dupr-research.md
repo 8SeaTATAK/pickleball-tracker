@@ -118,6 +118,19 @@ Reclub、CourtReserve、Pickleheads、Scoreholio 等已接入 DUPR：把 DUPR Cl
 - 建议：俱乐部挑一名分数稳定的教练考认证，新人先上定级课拿起始分，再参加上面的新人定级场，比只靠比赛定级快、更准。小程序可加「定级课」活动类型，报名收费走 AA / 收款流程。
 - 来源：[Become a DUPR Coach](https://www.dupr.com/become-a-dupr-coach)、[Coach Certification](https://www.duprcoach.com/coach-cert)、[如何办现场定级课](https://info.duprcoach.com/resources/coach-assigned-rating)、[How to become a DUPR Coach](https://www.dupr.com/post/how-to-become-a-dupr-coach)、[用 DUPR 拓展教练业务](https://www.dupr.com/post/how-to-grow-your-pickleball-coaching-business-with-dupr)
 
+### 补充：Pickleball.com《Understanding DUPR》要点（2025-12-10）
+
+- 分差 0.5 时，预期比分大约是 11:5（只是参考值，DUPR 还在调整）。
+- **两队平均分相差超过 1.0，这场不影响任何人的评分。**
+- 打弱队：赢 11:9 可能掉分，赢 11:3 可能涨分，看的是有没有超出预期。
+- **赛事总监录的和俱乐部管理员录的比分，权重一样**；只有球员自己报的比分权重低。
+- 不按年龄、性别分开计分；受伤不调整；评分一般不能重置。
+- 没有 DUPR 分的新人有两条路：请 DUPR 教练评估给起始分，或者靠比赛结果；报名比赛时可以先用自评等级。
+- 已接入 100 多个活动 / 俱乐部管理平台，全球 8,000 多家俱乐部。
+- 比分录错：找赛事总监改，改完评分自动更新。
+- 2026-11-24 群里传「分差 0.5 以上、强队赢了四人都不变」的新规则，**未找到官方来源，未核实**。
+- 来源：[Understanding DUPR: Your Questions Answered](https://pickleball.com/blogs/understanding-dupr-your-questions-answered-1)
+
 ## 八、小程序怎么连 DUPR：分三步
 
 ### 第 0 步：不需要 DUPR 批准，现在就能做（建议先做）
