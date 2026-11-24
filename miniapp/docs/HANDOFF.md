@@ -32,3 +32,8 @@
 3. 建 7 个集合，权限设为「仅管理端可读写」。
 4. 可选：云函数环境变量 `VIP_OPENIDS`（逗号分隔的 openid，永久 VIP）。
 5. 继续 `RELEASE_CHECKLIST.md`：隐私保护指引、审核说明和测试账号、真机测试、小程序备案。
+
+## 2026-11-24 更新
+
+- DUPR 调研、俱乐部申请进度和今天定下的规则，见 `docs/notes-2026-11-24.md`（纪要）、`docs/dupr-research.md`（调研）和 `PRODUCT_RULES.md` 第 12–15 条。
+- 下一步开发优先级：DUPR ID 字段 → 活动类型（普通 Social / DUPR 计分场）→ 比分双方确认 → 周期活动。
