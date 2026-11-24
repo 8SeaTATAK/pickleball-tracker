@@ -111,8 +111,10 @@ Header: RSC: 1
 快速核对某场某天的可订格子：
 
 ```
-curl -sS -H 'RSC: 1' '<上面的 URL>' | grep -oE '2026-10-30T(19|2[01]):[03]0' | sort -u
+curl -sS -H 'RSC: 1' '<上面的 URL>' | grep -oE '"time":"2026-10-30T(19|2[01]):[03]0' | sed 's/.*T//' | sort -u
 ```
+
+**一定要带上 `"time":"` 前缀。** 每个可订格子在数据里还有一个结束时间（`endTimeByStaffId`）。只 grep 日期的话，会把结束时间也算进去，比如 19:30 可订时，20:00 会被误报成可订。这个 bug 曾经让几笔已经订上的预订被误报为「还没订成」。最准确的核对方法是运行 `node scrape.mjs`，再拿 `data/availability.json` 和 `mine.json` 对比。
 
 源站响应没有 CORS 头，所以浏览器不能直接抓，只能靠 `scrape.mjs`（本地或 Actions）。
 
