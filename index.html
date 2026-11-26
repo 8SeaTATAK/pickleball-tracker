@@ -1,384 +1,364 @@
 <!doctype html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ryde Pickleball Openings</title>
-<meta name="description" content="Tennis World North Ryde 全 16 片场 pickleball 空场汇总,每 30 分钟自动刷新。">
-<meta name="theme-color" content="#216b43">
+<meta name="description" content="Tennis World North Ryde 全 16 片场 pickleball 空位总览，每 30 分钟自动刷新。">
+<meta name="theme-color" content="#0d9488">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Pickleball">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Ryde Pickleball 空场">
-<meta property="og:description" content="Tennis World North Ryde 全 16 片场,每 30 分钟自动刷新">
+<meta property="og:title" content="Ryde Pickleball 空位总览">
+<meta property="og:description" content="Tennis World North Ryde 全 16 片场，每 30 分钟自动刷新">
 <meta property="og:image" content="https://8seatatak.github.io/pickleball-tracker/icon-512.png">
 <meta property="og:url" content="https://8seatatak.github.io/pickleball-tracker/">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
 <style>
 :root{
-  --paper:#f6f5f1; --card:#fdfcfa; --ink:#1c211c; --muted:#71776f; --line:#e2e0d8;
-  --turf:#216b43; --clay:#b95c30;
-  --free-bg:#d3e9f6; --free-br:#7bb4d6; --free-tx:#155574;
-  --un-bg:#eceae4; --un-tx:#a7aca2; --un-br:#e2e0d8;
-  --mine-bg:#dcefe1; --mine-br:#3f9c68; --mine-tx:#1c6b3f;
-  --head:#eef4f0;
+  --bg:#fafaf9; --card-bg:#ffffff; --text:#1c1917; --text-secondary:#78716c;
+  --border:#e7e5e4; --accent:#0d9488; --accent-light:#ccfbf1;
+  --available:#16a34a; --available-bg:#dcfce7;
+  --unavailable:#d4d4d8; --unavailable-bg:#f4f4f5;
+  --premium-accent:#7c3aed; --premium-bg:#f5f3ff;
+  --header-bg:#f5f5f4; --warn:#c2410c; --shadow:0 1px 3px rgba(0,0,0,.06);
 }
 @media (prefers-color-scheme:dark){
- :root{
-  --paper:#141714; --card:#1a1e1a; --ink:#e9ebe6; --muted:#99a094; --line:#2c312b;
-  --turf:#7fd0a1; --clay:#e08a5c;
-  --free-bg:#173442; --free-br:#2f6d8c; --free-tx:#8fcdec;
-  --un-bg:#20241f; --un-tx:#5c635a; --un-br:#2c312b;
-  --mine-bg:#183a27; --mine-br:#3f9c68; --mine-tx:#8ee0ab;
-  --head:#1e2620;
- }
+  :root:not([data-theme="light"]){
+    --bg:#1a1a1a; --card-bg:#262626; --text:#e7e5e4; --text-secondary:#a8a29e;
+    --border:#3a3a3a; --accent:#2dd4bf; --accent-light:#134e4a;
+    --available:#4ade80; --available-bg:#14532d;
+    --unavailable:#525252; --unavailable-bg:#2a2a2a;
+    --premium-accent:#a78bfa; --premium-bg:#2e1065;
+    --header-bg:#2a2a2a; --warn:#fb923c; --shadow:0 1px 3px rgba(0,0,0,.3);
+  }
 }
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--paper);color:var(--ink);
-  font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.4;-webkit-font-smoothing:antialiased}
-.wrap{max-width:100%;margin:0 auto;padding:28px 22px 70px}
-.eyebrow{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.16em;
-  font-size:12px;font-weight:600;color:var(--turf)}
-h1{font-family:Oswald,sans-serif;font-weight:700;font-size:29px;margin:.2em 0 .1em;letter-spacing:-.01em}
-.sub{color:var(--muted);font-size:14px;margin:0}
-.legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:14px 0 4px;font-size:12.5px;color:var(--muted)}
-.legend .k{display:inline-flex;align-items:center;gap:7px}
-.legend .box{width:42px;height:20px;border-radius:5px;display:inline-flex;align-items:center;
-  justify-content:center;font-size:10px;font-variant-numeric:tabular-nums;border:1px solid}
-.legend .box.free{background:var(--free-bg);border-color:var(--free-br);color:var(--free-tx)}
-.legend .box.un{background:var(--un-bg);border-color:var(--un-br);color:var(--un-tx)}
-.legend .box.mine{background:var(--mine-bg);border-color:var(--mine-br);color:var(--mine-tx);font-weight:600}
-.legend .hint{margin-left:auto;font-style:italic}
-
-.board{overflow:auto;margin-top:12px;border:1px solid var(--line);border-radius:12px;max-height:82vh}
-table{border-collapse:separate;border-spacing:0;background:var(--card)}
-th,td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);vertical-align:top}
-thead th{position:sticky;top:0;z-index:3;background:var(--head);padding:0}
-thead th.corner{left:0;z-index:4}
-.datebtn{display:flex;flex-direction:column;align-items:center;gap:1px;width:100%;
-  border:0;background:transparent;cursor:pointer;padding:9px 10px 8px;color:inherit;font:inherit;
-  border-bottom:3px solid transparent;transition:.15s}
-.datebtn:hover{background:var(--free-bg)}
-.datebtn.active{border-bottom-color:var(--turf);background:var(--free-bg)}
-.datebtn .dd{font-family:Oswald,sans-serif;font-weight:600;font-size:15px;letter-spacing:.02em;font-variant-numeric:tabular-nums}
-.datebtn .dw{font-size:11px;color:var(--muted)}
-.datebtn .dw.we{color:var(--clay);font-weight:600}
-.datebtn .dc{font-size:10px;color:var(--turf);font-family:Oswald,sans-serif;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
-.datebtn.active .dc::after{content:' · 仅可订'}
-
-tbody th.court{position:sticky;left:0;z-index:2;background:var(--card);text-align:left;
-  font-family:Oswald,sans-serif;font-weight:600;font-size:13px;padding:8px 14px 8px 12px;white-space:nowrap;
-  border-right:2px solid var(--line)}
-tbody th.court .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:middle}
-.dot.p{background:var(--clay)} .dot.s{background:var(--turf)}
-tbody tr.tierrow th{position:sticky;left:0;background:var(--head);font-family:Oswald,sans-serif;
-  text-transform:uppercase;letter-spacing:.1em;font-size:10.5px;font-weight:600;color:var(--muted);
-  padding:5px 12px;z-index:2}
-tbody tr.tierrow td{background:var(--head)}
-
-td.cell{padding:6px;min-width:172px}
-.chips{display:flex;flex-wrap:wrap;gap:4px}
-.chip{width:48px;height:22px;border-radius:5px;border:1px solid;display:inline-flex;
-  align-items:center;justify-content:center;font-size:10.5px;font-variant-numeric:tabular-nums;font-weight:500}
-.chip.free{background:var(--free-bg);border-color:var(--free-br);color:var(--free-tx)}
-.chip.un{background:var(--un-bg);border-color:var(--un-br);color:var(--un-tx)}
-.chip.mine{background:var(--mine-bg);border-color:var(--mine-br);color:var(--mine-tx);font-weight:600;
-  box-shadow:0 0 0 1px var(--mine-br) inset}
-td.cell.freeonly .chip.un,td.cell.freeonly .chip.mine{display:none}
-td.cell.freeonly .chips:empty::after,td.cell.freeonly.empty::after{content:'—';color:var(--muted);font-size:12px}
-.stats{margin-top:34px}
-.stats h2{font-family:Oswald,sans-serif;font-weight:700;font-size:22px;margin:.2em 0 .1em}
-.cards{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 18px;min-width:130px}
-.card b{display:block;font-family:Oswald,sans-serif;font-size:28px;color:var(--turf);font-variant-numeric:tabular-nums}
-.card span{font-size:12px;color:var(--muted)}
-.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
-.panel h3{margin:0 0 10px;font-family:Oswald,sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
-.bar{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:12.5px}
-.bar .l{width:54px;flex:none;color:var(--ink)}
-.bar .t{flex:1;background:var(--un-bg);border-radius:4px;height:14px;overflow:hidden}
-.bar .t i{display:block;height:100%;background:var(--mine-br);border-radius:4px}
-.bar .v{width:44px;flex:none;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
-footer{margin-top:22px;font-size:12px;color:var(--muted)}
-footer a{color:var(--turf)}
-.loading,.err{padding:40px 0;text-align:center;color:var(--muted)}
-
-/* ---------- phone layout: date strip + one court per row ---------- */
-.m{display:none}
-@media (max-width:760px){
-  .wrap{padding:20px 16px 56px}
-  h1{font-size:24px}
-  .board,.legend .hint{display:none}
-  .m{display:block}
-  .cards{gap:8px}
-  .card{flex:1 1 calc(50% - 4px);min-width:0;padding:10px 12px}
-  .card b{font-size:22px}
-  .stats h2{font-size:19px}
+:root[data-theme="dark"]{
+  --bg:#1a1a1a; --card-bg:#262626; --text:#e7e5e4; --text-secondary:#a8a29e;
+  --border:#3a3a3a; --accent:#2dd4bf; --accent-light:#134e4a;
+  --available:#4ade80; --available-bg:#14532d;
+  --unavailable:#525252; --unavailable-bg:#2a2a2a;
+  --premium-accent:#a78bfa; --premium-bg:#2e1065;
+  --header-bg:#2a2a2a; --warn:#fb923c; --shadow:0 1px 3px rgba(0,0,0,.3);
 }
-.mdates{display:flex;gap:7px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none;
-  position:sticky;top:0;background:var(--paper);z-index:5}
-.mdates::-webkit-scrollbar{display:none}
-.mdate{flex:none;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:56px;
-  border:1px solid var(--line);background:var(--card);border-radius:10px;
-  padding:7px 11px;cursor:pointer;color:inherit;font:inherit}
-.mdate .dd{font-family:Oswald,sans-serif;font-weight:600;font-size:15px;font-variant-numeric:tabular-nums}
-.mdate .dw{font-size:10.5px;color:var(--muted)}
-.mdate .dw.we{color:var(--clay);font-weight:600}
-.mdate .dc{font-size:10px;font-family:Oswald,sans-serif;font-weight:600;color:var(--turf);
-  font-variant-numeric:tabular-nums}
-.mdate.on{background:var(--turf);border-color:var(--turf)}
-.mdate.on .dd,.mdate.on .dw,.mdate.on .dc{color:#fff}
-.mbar{display:flex;align-items:center;gap:10px;margin:2px 0 8px;font-size:12px;color:var(--muted)}
-.mbar button{border:1px solid var(--line);background:var(--card);color:var(--muted);
-  border-radius:999px;padding:5px 13px;font:inherit;font-size:12px;cursor:pointer}
-.mbar button.on{background:var(--mine-bg);border-color:var(--mine-br);color:var(--mine-tx);font-weight:600}
-.mlist{border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
-.mrow{padding:10px 13px;border-bottom:1px solid var(--line)}
-.mrow:last-child{border-bottom:0}
-.mct{font-family:Oswald,sans-serif;font-weight:600;font-size:13.5px;margin-bottom:7px}
-.mct em{font-style:normal;font-family:Inter,sans-serif;font-weight:400;font-size:11.5px;
-  color:var(--muted);margin-left:7px}
-.mempty{padding:26px 0;text-align:center;color:var(--muted);font-size:13px}
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:var(--bg)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);
+  color:var(--text);line-height:1.5;padding:20px 16px 60px;max-width:1280px;margin:0 auto;-webkit-font-smoothing:antialiased}
+h1{font-size:1.4rem;font-weight:700;margin-bottom:2px;letter-spacing:-.02em}
+.subtitle{color:var(--text-secondary);font-size:.82rem;margin-bottom:4px}
+.source-note{color:var(--text-secondary);font-size:.72rem;margin-bottom:14px}
+.source-note a{color:var(--accent)}
 
-/* ---------- refresh + edit toolbars ---------- */
-#refreshbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:12px 0 2px;font-size:12.5px}
-#editbar{display:none;align-items:center;gap:9px;flex-wrap:wrap;margin:10px 0 2px;font-size:12.5px}
-#editbar.show{display:flex}
-#refreshbar button,#editbar button{border:1px solid var(--line);background:var(--card);color:var(--ink);
-  border-radius:999px;padding:6px 14px;font:inherit;font-size:12.5px;cursor:pointer}
-#refreshbar button.go,#editbar button.go{background:var(--turf);border-color:var(--turf);color:#fff;font-weight:600}
-#refreshbar button:disabled,#editbar button:disabled{opacity:.45;cursor:default}
-#refreshbar .note,#editbar .note{color:var(--muted)}
-#refreshbar .note.warn,#editbar .note.warn{color:var(--clay)}
-body.editing .chip{cursor:pointer}
-body.editing td.cell.freeonly .chip{display:inline-flex}
-body.editing .chip.free,body.editing .chip.un{border-style:dashed}
-body.editing .chip:active{transform:scale(.94)}
+/* refresh + edit toolbars */
+.bars{display:flex;flex-direction:column;gap:6px;margin:8px 0 14px}
+#refreshbar,#editbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:.8rem}
+#editbar:empty{display:none}
+.bars button{border:1px solid var(--border);background:var(--card-bg);color:var(--text);
+  border-radius:999px;padding:5px 13px;font:inherit;font-size:.78rem;cursor:pointer;box-shadow:var(--shadow)}
+.bars button.go{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.bars button:disabled{opacity:.45;cursor:default}
+.stamp{font-weight:700;color:var(--accent)}
+.note{color:var(--text-secondary)}
+.note.warn{color:var(--warn)}
+
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px;font-size:.78rem;color:var(--text-secondary)}
+.legend-item{display:flex;align-items:center;gap:4px}
+.legend-dot{width:11px;height:11px;border-radius:3px}
+.legend-dot.avail{background:var(--available-bg);border:1px solid var(--available)}
+.legend-dot.unavail{background:var(--unavailable-bg);border:1px solid var(--unavailable)}
+.legend-dot.mine{background:var(--premium-accent);border:1px solid var(--premium-accent)}
+
+.summary-card{background:var(--accent-light);border:1px solid var(--accent);border-radius:8px;padding:14px;margin-bottom:18px}
+.summary-card h2{font-size:.95rem;font-weight:700;margin-bottom:6px;color:var(--accent)}
+.summary-card p{font-size:.82rem;margin-bottom:5px;cursor:pointer;border-radius:4px}
+.summary-card p:hover{text-decoration:underline;text-decoration-color:var(--accent)}
+.summary-card p:last-child{margin-bottom:0}
+.summary-card strong{font-weight:600}
+.summary-card .mine-tag{color:var(--premium-accent);font-weight:600}
+
+.tabs-wrap{overflow-x:auto;margin-bottom:16px;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+  position:sticky;top:0;background:var(--bg);z-index:5}
+.tabs-wrap::-webkit-scrollbar{display:none}
+.tabs{display:flex;border-bottom:2px solid var(--border);min-width:max-content}
+.tab{padding:6px 14px;cursor:pointer;font-size:.8rem;font-weight:500;color:var(--text-secondary);
+  border:0;background:none;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-2px;
+  transition:all .15s;user-select:none;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.tab.weekend{font-style:italic}
+.tab .cnt{font-size:.68rem;opacity:.75;margin-left:3px;font-variant-numeric:tabular-nums}
+.tab.has-mine::after{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--premium-accent);margin-left:4px;vertical-align:middle}
+
+.day-info{font-size:.75rem;color:var(--text-secondary);margin-bottom:10px;padding:6px 10px;
+  background:var(--header-bg);border-radius:5px;display:inline-block}
+.section-title{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--text-secondary);margin:12px 0 6px;padding-left:4px}
+.court-row{display:grid;grid-template-columns:90px 1fr;align-items:center;background:var(--card-bg);
+  border:1px solid var(--border);border-radius:7px;padding:8px 12px;box-shadow:var(--shadow);min-height:40px;margin-bottom:5px}
+.court-row.premium{border-left:3px solid var(--premium-accent)}
+.court-label{font-weight:600;font-size:.78rem;white-space:nowrap}
+.court-label .type-tag{font-size:.62rem;font-weight:500;color:var(--text-secondary);display:block;margin-top:1px}
+.court-label .type-tag.prem{color:var(--premium-accent)}
+.slots{display:flex;gap:3px;flex-wrap:wrap}
+.slot{font-size:.68rem;font-weight:500;padding:2px 6px;border-radius:3px;font-variant-numeric:tabular-nums;
+  border:1px solid;min-width:40px;text-align:center}
+.slot.avail{background:var(--available-bg);color:var(--available);border-color:var(--available)}
+.slot.unavail{background:var(--unavailable-bg);color:var(--unavailable);border-color:var(--unavailable);opacity:.4}
+.slot.booked{background:var(--premium-accent);color:#fff;border-color:var(--premium-accent);font-weight:700}
+.no-slots{font-size:.75rem;color:var(--unavailable);font-style:italic}
+.loading,.err{padding:40px 0;text-align:center;color:var(--text-secondary)}
+
+/* edit mode: every slot is tappable */
+body.editing .slot{cursor:pointer}
+body.editing .slot.unavail{opacity:.75;border-style:dashed}
+body.editing .slot.avail{border-style:dashed}
+body.editing .slot:active{transform:scale(.94)}
+
+/* stats */
+.stats{margin-top:30px}
+.stats h2{font-size:1.15rem;font-weight:700;margin-bottom:2px;letter-spacing:-.01em}
+.cards{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+.card{background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:120px;box-shadow:var(--shadow)}
+.card b{display:block;font-size:1.5rem;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.card span{font-size:.72rem;color:var(--text-secondary)}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.panel{background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;box-shadow:var(--shadow)}
+.panel h3{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-secondary);margin-bottom:8px}
+.bar{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:.75rem}
+.bar .l{width:52px;flex:none}
+.bar .t{flex:1;background:var(--unavailable-bg);border-radius:3px;height:12px;overflow:hidden}
+.bar .t i{display:block;height:100%;background:var(--premium-accent);border-radius:3px}
+.bar .v{width:42px;flex:none;text-align:right;font-variant-numeric:tabular-nums;color:var(--text-secondary)}
+footer{margin-top:22px;font-size:.72rem;color:var(--text-secondary)}
+footer a{color:var(--accent)}
+
+@media (max-width:600px){
+  body{padding:16px 16px 50px}
+  h1{font-size:1.15rem}
+  .court-row{grid-template-columns:65px 1fr;padding:6px 8px}
+  .court-label{font-size:.72rem}
+  .slot{font-size:.62rem;padding:2px 4px;min-width:34px}
+  .tab{padding:6px 10px;font-size:.72rem}
+  .card{flex:1 1 calc(50% - 5px);min-width:0;padding:8px 12px}
+  .card b{font-size:1.25rem}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="eyebrow">Tennis World · North Ryde</div>
-  <h1>Pickleball 空场汇总</h1>
-  <p class="sub">全 16 片场 · 30 分钟一格 · 悉尼时间(AEST) · 工作日 19:00 后 / 周末 14:00 后 · 每 30 分钟自动刷新</p>
-  <div class="legend">
-    <span class="k"><span class="box free">19:00</span> 可预订</span>
-    <span class="k"><span class="box un">19:30</span> 已订/不可用</span>
-    <span class="k"><span class="box mine">20:00</span> 我的预订</span>
-    <span class="hint">点击顶部日期 → 该列只显示可预订</span>
-  </div>
-  <div id="refreshbar"></div>
-  <div id="editbar"></div>
-  <div id="board" class="board"><div class="loading">加载中…</div></div>
-  <div id="m" class="m"><div class="loading">加载中…</div></div>
-  <section class="stats" id="stats"></section>
-  <footer id="footer"></footer>
+<h1>Tennis World North Ryde — Pickleball 空位总览</h1>
+<p class="subtitle" id="range">Courts 1–16 · 工作日 7–10PM / 周末 2–10PM</p>
+<div class="bars"><div id="refreshbar"></div><div id="editbar"></div></div>
+<p class="source-note">数据源：Tennis World 官网预订系统（MindBody），GitHub Actions 每 30 分钟自动抓取一次。空场实时变动，预订前请到
+  <a href="https://www.tennisworldonline.com.au/bookacourt/">官网</a> 再确认。10:00 PM 起始时段不开放预订。</p>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot avail"></div> 可订</div>
+  <div class="legend-item"><div class="legend-dot unavail"></div> 已满</div>
+  <div class="legend-item"><div class="legend-dot mine"></div> 我的预订 ✓</div>
 </div>
 
+<div class="summary-card">
+  <h2>订场推荐（按当前数据自动生成）</h2>
+  <div id="summary"><p>加载中…</p></div>
+</div>
+
+<div class="tabs-wrap"><div class="tabs" id="tabs"></div></div>
+<div id="panel"><div class="loading">加载中…</div></div>
+
+<section class="stats" id="stats"></section>
+<footer id="footer"></footer>
+
 <script>
-const COURTS=[
- {n:'Court 1',k:'Ct1',t:'p'},{n:'Court 2',k:'Ct2',t:'p'},{n:'Court 3',k:'Ct3',t:'p'},{n:'Court 4',k:'Ct4',t:'p'},
- {n:'Court 5',k:'Ct5',t:'s'},{n:'Court 6',k:'Ct6',t:'s'},{n:'Court 7',k:'Ct7',t:'s'},{n:'Court 8',k:'Ct8',t:'s'},
- {n:'Court 9',k:'Ct9',t:'s'},{n:'Court 10',k:'Ct10',t:'s'},{n:'Court 11',k:'Ct11',t:'s'},{n:'Court 12',k:'Ct12',t:'s'},
- {n:'Court 13',k:'Ct13',t:'s'},{n:'Court 14',k:'Ct14',t:'s'},{n:'Court 15',k:'Ct15',t:'s'},{n:'Court 16',k:'Ct16',t:'s'}
-];
+const COURTS=[];
+for(let i=1;i<=16;i++) COURTS.push({k:'Ct'+i,n:i<10?'Ct '+i:'Ct'+i,t:i<=4?'Premium':'Standard',g:i<=4?'P':i<=8?'A':i<=12?'B':'C'});
+const GL={P:'Premium (Ct 1-4) A$35/hr',A:'Std A (5-8) A$30/hr 布局:6,7上/5,8下',
+  B:'Std B (9-12) A$30/hr 布局:10,11上/9,12下',C:'Std C (13-16) A$30/hr 布局:14,15上/13,16下'};
+const DOW=['日','一','二','三','四','五','六'];
 const DOWCN=['周日','周一','周二','周三','周四','周五','周六'];
 const WK=['19:00','19:30','20:00','20:30','21:00','21:30'];
 const WE=['14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30'];
+// 24h data keys, shown as 12h like the booking site ("8:30").
+const lbl=t=>{const [h,m]=t.split(':');return (+h>12?+h-12:+h)+':'+m;};
 
-// Last payload rendered, so edit mode can re-render without refetching.
 let LAST=null;
+const VIEW={date:null};
+try{VIEW.date=sessionStorage.getItem('pb_day');}catch{}
+
 // fresh=true reads the files straight from the repo through the GitHub API
 // (needs the device token), so a just-finished scrape shows up without
 // waiting for Pages to redeploy.
 async function load(fresh){
-  const bust = '?t=' + Date.now();
-  const get = fresh && EDIT.token
+  const bust='?t='+Date.now();
+  const get=fresh&&EDIT.token
     ? p=>fetch(`https://api.github.com/repos/${REPO}/contents/${p}?ref=main&t=${Date.now()}`,
         {headers:{Authorization:'Bearer '+EDIT.token,Accept:'application/vnd.github.raw+json'},cache:'no-store'})
     : p=>fetch(p+bust);
-  const [availRes, mineRes, histRes] = await Promise.all([
+  const [availRes,mineRes,histRes]=await Promise.all([
     get('data/availability.json'),
     get('data/mine.json').catch(()=>null),
     get('data/history.json').catch(()=>null)
   ]);
-  if(!availRes.ok) throw new Error('availability.json fetch failed');
-  const avail = await availRes.json();
-  let mine = {};
-  if(mineRes && mineRes.ok) mine = await mineRes.json();
-  LAST={DATA:avail.data||{}, MINE:mine, gen:avail.generatedAt, HIST:LAST&&LAST.HIST};
-  render(LAST.DATA, LAST.MINE, LAST.gen);
-  let hist = {};
-  if(histRes && histRes.ok) hist = await histRes.json();
+  if(!availRes.ok) throw new Error('availability.json 读取失败');
+  const avail=await availRes.json();
+  let mine={};
+  if(mineRes&&mineRes.ok) mine=await mineRes.json();
+  LAST={DATA:avail.data||{},MINE:mine,gen:avail.generatedAt,HIST:LAST&&LAST.HIST};
+  render();
+  let hist={};
+  if(histRes&&histRes.ok) hist=await histRes.json();
   LAST.HIST=hist;
-  renderStats(hist, LAST.MINE);
+  renderStats(hist,LAST.MINE);
 }
 
-function renderStats(HIST, MINE){
-  const sum=(m)=>{ // m: {date:{court:[slots]}} -> aggregates (1 slot = 0.5h)
+function dayMeta(){
+  const {DATA,MINE}=LAST;
+  return Object.keys(DATA).sort().map(date=>{
+    const d=new Date(date+'T00:00:00'),dow=d.getDay(),weekend=dow===0||dow===6;
+    const slots=weekend?WE:WK;
+    let total=0,full=[],prime=[],mine=0;
+    COURTS.forEach(c=>{
+      const a=DATA[date][c.k]||[];total+=a.length;
+      if(a.length===slots.length) full.push(c.k.slice(2));
+      if(a.includes('20:00')&&a.includes('20:30')) prime.push(c.k.slice(2));
+      mine+=(((MINE[date]||{})[c.k])||[]).length;
+    });
+    return {date,dow,weekend,slots,total,full,prime,mine,md:`${+date.slice(5,7)}/${+date.slice(8)}`};
+  });
+}
+
+function render(){
+  const meta=dayMeta();
+  renderRefreshBar();renderEditBar();
+  if(!meta.length){document.getElementById('panel').innerHTML='<div class="loading">暂无数据</div>';return;}
+  if(!meta.some(m=>m.date===VIEW.date)){
+    const today=sydneyToday();
+    VIEW.date=(meta.find(m=>m.date>=today)||meta[0]).date;
+  }
+  document.getElementById('range').textContent=
+    `Courts 1–16 · ${DOWCN[meta[0].dow]} ${meta[0].md} 至 ${DOWCN[meta.at(-1).dow]} ${meta.at(-1).md} · 工作日 7–10PM / 周末 2–10PM`;
+
+  document.getElementById('tabs').innerHTML=meta.map(m=>
+    `<button class="tab${m.weekend?' weekend':''}${m.mine?' has-mine':''}${m.date===VIEW.date?' active':''}" data-day="${m.date}">${DOW[m.dow]} ${m.md}<span class="cnt">${m.total}</span></button>`).join('');
+
+  document.getElementById('summary').innerHTML=meta.map(m=>{
+    const parts=[];
+    if(!m.total) parts.push('已无空位');
+    else{
+      parts.push(`共 ${m.total} 个空格`);
+      if(m.full.length) parts.push('全通：Ct'+m.full.join('/'));
+      parts.push(m.prime.length?'8–9 PM 可订：Ct'+m.prime.join('/'):'8–9 PM 无整小时空场');
+    }
+    if(m.mine) parts.push(`<span class="mine-tag">我的预订 ${m.mine/2}h</span>`);
+    return `<p data-day="${m.date}"><strong>${DOWCN[m.dow]} ${m.md}</strong> — ${parts.join('；')}</p>`;
+  }).join('');
+
+  renderDay(meta.find(m=>m.date===VIEW.date));
+
+  const tab=document.querySelector('.tab.active');
+  if(tab){ // keep the active tab in view sideways only; never move the page
+    const w=document.querySelector('.tabs-wrap');
+    if(tab.offsetLeft<w.scrollLeft||tab.offsetLeft+tab.offsetWidth>w.scrollLeft+w.clientWidth)
+      w.scrollLeft=tab.offsetLeft-16;
+  }
+
+  const stamp=LAST.gen?new Date(LAST.gen).toLocaleString('zh-CN',{timeZone:'Australia/Sydney'}):'未知';
+  document.getElementById('footer').innerHTML=`快照：${stamp}（悉尼时间）· 来源 <a href="https://www.tennisworldonline.com.au/bookacourt/">tennisworldonline.com.au</a>`;
+}
+
+function renderDay(m){
+  const {DATA,MINE}=LAST;
+  let h=`<div class="day-info">${m.weekend?'Weekend 2:00-10:00 PM':'Weekday 7:00-10:00 PM'} (${m.slots.length} slots) · ${m.total} 个空格 · ${m.total/2}h</div>`;
+  let lastG='';
+  COURTS.forEach(c=>{
+    if(c.g!==lastG){lastG=c.g;h+=`<div class="section-title">${GL[c.g]}</div>`;}
+    const avail=new Set(DATA[m.date][c.k]||[]);
+    const mine=new Set(((MINE[m.date]||{})[c.k])||[]);
+    const isPrem=c.t==='Premium';
+    const slots=m.slots.map(t=>{
+      const cls=mine.has(t)?'booked':avail.has(t)?'avail':'unavail';
+      return `<span class="slot ${cls}" data-d="${m.date}" data-c="${c.k}" data-t="${t}"${cls==='booked'?' title="我的预订"':''}>${lbl(t)}${cls==='booked'?'✓':''}</span>`;
+    }).join('');
+    const any=avail.size||mine.size||EDIT.on;
+    h+=`<div class="court-row${isPrem?' premium':''}"><div class="court-label">${c.n}<span class="type-tag${isPrem?' prem':''}">${c.t} ${avail.size}/${m.slots.length}</span></div>
+      <div class="slots">${any?slots:'<span class="no-slots">无可用</span>'}</div></div>`;
+  });
+  document.getElementById('panel').innerHTML=h;
+}
+
+function pick(day){
+  VIEW.date=day;
+  try{sessionStorage.setItem('pb_day',day);}catch{}
+  render();
+}
+document.getElementById('tabs').addEventListener('click',e=>{
+  const t=e.target.closest('.tab');if(t) pick(t.dataset.day);
+});
+document.getElementById('summary').addEventListener('click',e=>{
+  const p=e.target.closest('p[data-day]');if(!p) return;
+  pick(p.dataset.day);
+  document.querySelector('.tabs-wrap').scrollIntoView({behavior:'smooth',block:'start'});
+});
+
+function renderStats(HIST,MINE){
+  const sum=m=>{ // {date:{court:[slots]}} -> aggregates (1 slot = 0.5h)
     const r={slots:0,sessions:0,days:0,dow:Array(7).fill(0),court:{},week:{}};
     for(const [date,cs] of Object.entries(m)){
-      const n=Object.values(cs).reduce((a,v)=>a+v.length,0); if(!n) continue;
-      r.days++; r.slots+=n; r.sessions+=Object.keys(cs).length;
-      const d=new Date(date+'T00:00:00'); r.dow[d.getDay()]+=n/2;
+      const n=Object.values(cs).reduce((a,v)=>a+v.length,0);if(!n) continue;
+      r.days++;r.slots+=n;r.sessions+=Object.keys(cs).length;
+      const d=new Date(date+'T00:00:00');r.dow[d.getDay()]+=n/2;
       for(const [c,v] of Object.entries(cs)) r.court[c]=(r.court[c]||0)+v.length/2;
-      const mon=new Date(d); mon.setDate(d.getDate()-((d.getDay()+6)%7));
+      const mon=new Date(d);mon.setDate(d.getDate()-((d.getDay()+6)%7));
       const wk=`${mon.getMonth()+1}/${mon.getDate()}`;r.week[wk]=(r.week[wk]||0)+n/2;
     }
     return r;
   };
-  const past=sum(HIST), up=sum(MINE);
+  const past=sum(HIST),up=sum(MINE);
   const bars=(rows,unit)=>{const mx=Math.max(1,...rows.map(r=>r[1]));
-    return rows.map(([l,v])=>`<div class="bar"><span class="l">${l}</span><span class="t"><i style="width:${v/mx*100}%"></i></span><span class="v">${v}${unit}</span></div>`).join('')||'<div class="sub">暂无数据</div>';};
+    return rows.map(([l,v])=>`<div class="bar"><span class="l">${l}</span><span class="t"><i style="width:${v/mx*100}%"></i></span><span class="v">${v}${unit}</span></div>`).join('')||'<div class="subtitle">暂无数据</div>';};
   const dowRows=[1,2,3,4,5,6,0].map(i=>[DOWCN[i],past.dow[i]]);
   const courtRows=Object.entries(past.court).sort((a,b)=>+a[0].slice(2)-+b[0].slice(2)).map(([c,v])=>['Ct '+c.slice(2),v]);
   const weekRows=Object.entries(past.week);
-  const el=document.getElementById('stats');
   const dates=Object.keys(HIST).sort();
   const since=dates.length?dates[0].slice(5).replace('-','/'):'';
-  el.innerHTML=`<div class="eyebrow">My Bookings</div><h2>我的订场统计</h2>
-   <p class="sub">已打过的场次(自 ${since} 起,每次刷新自动归档过期订单)· 取消的不计入</p>
+  document.getElementById('stats').innerHTML=`<h2>我的订场统计</h2>
+   <p class="subtitle">已打过的场次（自 ${since} 起，每次刷新自动归档过期订单）· 取消的不计入</p>
    <div class="cards">
     <div class="card"><b>${past.days}</b><span>已订天数</span></div>
-    <div class="card"><b>${past.sessions}</b><span>场地·次(court-sessions)</span></div>
+    <div class="card"><b>${past.sessions}</b><span>场地·次</span></div>
     <div class="card"><b>${past.slots/2}h</b><span>场地总小时</span></div>
     <div class="card"><b>${past.days?(past.slots/2/past.days).toFixed(1):0}h</b><span>平均每天</span></div>
-    <div class="card"><b>${up.sessions}</b><span>待打(今日起)· ${up.slots/2}h</span></div>
+    <div class="card"><b>${up.sessions}</b><span>待打（今日起）· ${up.slots/2}h</span></div>
    </div>
    <div class="charts">
-    <div class="panel"><h3>按星期(场地小时)</h3>${bars(dowRows,'h')}</div>
-    <div class="panel"><h3>按场地(小时)</h3>${bars(courtRows,'h')}</div>
-    <div class="panel"><h3>按周(周一起,小时)</h3>${bars(weekRows,'h')}</div>
+    <div class="panel"><h3>按星期（场地小时）</h3>${bars(dowRows,'h')}</div>
+    <div class="panel"><h3>按场地（小时）</h3>${bars(courtRows,'h')}</div>
+    <div class="panel"><h3>按周（周一起，小时）</h3>${bars(weekRows,'h')}</div>
    </div>`;
-}
-
-function render(DATA, MINE, generatedAt){
-  const dates=Object.keys(DATA).sort();
-  const meta=dates.map(date=>{
-    const d=new Date(date+'T00:00:00');const dow=d.getDay();const weekend=(dow===0||dow===6);
-    let total=0;COURTS.forEach(c=>total+=(DATA[date][c.k]||[]).length);
-    return {date,dow,weekend,slots:weekend?WE:WK,total,mo:+date.slice(5,7),da:+date.slice(8)};
-  });
-
-  const board=document.getElementById('board');
-  let h='<table><thead><tr><th class="corner" rowspan="1"></th>';
-  meta.forEach((m,i)=>{
-    h+=`<th><button class="datebtn" data-col="${i}">
-        <span class="dd">${m.mo}/${m.da}</span>
-        <span class="dw ${m.weekend?'we':''}">${DOWCN[m.dow]}</span>
-        <span class="dc">${m.total} 空</span></button></th>`;
-  });
-  h+='</tr></thead><tbody>';
-  let lastTier='';
-  COURTS.forEach(c=>{
-    if(c.t!==lastTier){
-      const lbl=c.t==='p'?'Premium 专用场':'Standard 多线场';
-      h+=`<tr class="tierrow"><th>${lbl}</th>${meta.map(()=>'<td></td>').join('')}</tr>`;
-      lastTier=c.t;
-    }
-    h+=`<tr><th class="court"><span class="dot ${c.t}"></span>${c.n}</th>`;
-    meta.forEach((m,i)=>{
-      const free=new Set(DATA[m.date][c.k]||[]);
-      const mineSet=new Set(((MINE[m.date]||{})[c.k])||[]);
-      let chips='';
-      m.slots.forEach(t=>{
-        const cls = mineSet.has(t) ? 'mine' : (free.has(t) ? 'free' : 'un');
-        chips+=`<span class="chip ${cls}" data-d="${m.date}" data-c="${c.k}" data-t="${t}">${t}</span>`;
-      });
-      h+=`<td class="cell c${i}"><div class="chips">${chips}</div></td>`;
-    });
-    h+='</tr>';
-  });
-  h+='</tbody></table>';
-  board.innerHTML=h;
-  renderMobile(DATA, MINE, meta);
-  renderRefreshBar();
-  renderEditBar();
-
-  document.querySelectorAll('.datebtn').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      const i=btn.dataset.col;
-      btn.classList.toggle('active');
-      const on=btn.classList.contains('active');
-      document.querySelectorAll('td.cell.c'+i).forEach(td=>{
-        td.classList.toggle('freeonly',on);
-        const anyFree=td.querySelector('.chip.free');
-        td.classList.toggle('empty', on && !anyFree);
-      });
-    });
-  });
-
-  const footer=document.getElementById('footer');
-  const stamp = generatedAt ? new Date(generatedAt).toLocaleString('zh-CN',{timeZone:'Australia/Sydney'}) : '未知';
-  footer.innerHTML = `快照:${stamp}(悉尼时间)· 每 30 分钟自动刷新 · 来源 <a href="https://www.tennisworldonline.com.au/bookacourt/">tennisworldonline.com.au</a> · 空场实时变动,预订前请再确认。`;
-}
-
-// Phone view: the 16x8 grid needs ~1400px, so narrow screens get a date strip
-// plus one court per row instead. Same data, same render pass.
-const MSTATE={i:0,freeOnly:true};
-
-function renderMobile(DATA, MINE, meta){
-  const host=document.getElementById('m');
-  if(!meta.length){host.innerHTML='<div class="mempty">暂无数据</div>';return;}
-  if(MSTATE.i>=meta.length) MSTATE.i=0;
-  const m=meta[MSTATE.i];
-
-  const strip=meta.map((x,i)=>`<button class="mdate${i===MSTATE.i?' on':''}" data-i="${i}">
-      <span class="dd">${x.mo}/${x.da}</span>
-      <span class="dw${x.weekend?' we':''}">${DOWCN[x.dow]}</span>
-      <span class="dc">${x.total}</span></button>`).join('');
-
-  const rows=COURTS.map(c=>{
-    const free=new Set(DATA[m.date][c.k]||[]);
-    const mineSet=new Set(((MINE[m.date]||{})[c.k])||[]);
-    if(FO() && !free.size && !mineSet.size) return '';
-    const chips=m.slots.map(t=>{
-      const cls=mineSet.has(t)?'mine':(free.has(t)?'free':'un');
-      if(FO() && cls==='un') return '';
-      return `<span class="chip ${cls}" data-d="${m.date}" data-c="${c.k}" data-t="${t}">${t}</span>`;
-    }).join('');
-    const tag=free.size?`${free.size*0.5}h 可订`:(mineSet.size?'我的预订':'已满');
-    return `<div class="mrow"><div class="mct"><span class="dot ${c.t}"></span>${c.n}<em>${tag}</em></div>
-      <div class="chips">${chips}</div></div>`;
-  }).join('');
-
-  host.innerHTML=`<div class="mdates">${strip}</div>
-    <div class="mbar"><button id="mOnly" class="${FO()?'on':''}">只看可订</button>
-      <span>${m.total} 个空格 · ${m.total*0.5}h</span></div>
-    <div class="mlist">${rows||'<div class="mempty">这天没有空场</div>'}</div>`;
-
-  host.querySelectorAll('.mdate').forEach(b=>b.addEventListener('click',()=>{
-    MSTATE.i=+b.dataset.i; renderMobile(DATA,MINE,meta);
-  }));
-  document.getElementById('mOnly').addEventListener('click',()=>{
-    MSTATE.freeOnly=!MSTATE.freeOnly; renderMobile(DATA,MINE,meta);
-  });
 }
 
 // Lets the page be added to the home screen and still open without signal.
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 // ---------------------------------------------------------------------------
-// Edit mode: tap a slot to mark it as Victor's booking, then commit
-// data/mine.json straight to GitHub. The token is entered once per device and
-// lives only in that browser's localStorage — it is never part of this repo,
-// so anyone else opening the page gets the read-only view.
+// Edit mode: tap a slot to mark it as my booking, then commit data/mine.json
+// straight to GitHub. The token is entered once per device and lives only in
+// that browser's localStorage — it is never part of this repo, so anyone else
+// opening the page gets the read-only view.
 // ---------------------------------------------------------------------------
 const REPO='8SeaTATAK/pickleball-tracker';
 const MINE_PATH='data/mine.json';
-const EDIT={on:false,dirty:false,busy:false,msg:'',token:localStorage.getItem('pb_token')||''};
-const FO=()=>MSTATE.freeOnly && !EDIT.on;
+let savedToken='';
+try{savedToken=localStorage.getItem('pb_token')||'';}catch{}
+const EDIT={on:false,dirty:false,busy:false,msg:'',token:savedToken};
 
 function rerender(){
   const y=scrollY;
-  render(LAST.DATA, LAST.MINE, LAST.gen);
-  if(LAST.HIST) renderStats(LAST.HIST, LAST.MINE);
+  render();
+  if(LAST.HIST) renderStats(LAST.HIST,LAST.MINE);
   scrollTo(0,y);
 }
 
@@ -388,11 +368,11 @@ function sydneyToday(){
 
 // Same discipline as the scraper: never let a past date linger.
 function cleanMine(src){
-  const today=sydneyToday(), out={};
+  const today=sydneyToday(),out={};
   for(const d of Object.keys(src).sort()){
     if(d<today) continue;
     const courts={};
-    for(const [c,v] of Object.entries(src[d])) if(v && v.length) courts[c]=[...v].sort();
+    for(const [c,v] of Object.entries(src[d])) if(v&&v.length) courts[c]=[...v].sort();
     if(Object.keys(courts).length) out[d]=courts;
   }
   return out;
@@ -400,14 +380,10 @@ function cleanMine(src){
 
 function renderEditBar(){
   const bar=document.getElementById('editbar');
-  if(!bar) return;
-  const show=!!EDIT.token;
-  bar.classList.toggle('show',show);
   document.body.classList.toggle('editing',EDIT.on);
-  if(!show){bar.innerHTML='';return;}
+  if(!EDIT.token){bar.innerHTML='';return;}
   if(!EDIT.on){
-    bar.innerHTML=`<button id="eOn">✎ 编辑我的预订</button>
-      <span class="note">${EDIT.msg||''}</span>`;
+    bar.innerHTML=`<button id="eOn">✎ 编辑我的预订</button><span class="note">${EDIT.msg||''}</span>`;
     document.getElementById('eOn').onclick=()=>{EDIT.on=true;EDIT.msg='';rerender();};
     return;
   }
@@ -417,22 +393,21 @@ function renderEditBar(){
     <span class="note${EDIT.msg.startsWith('✗')?' warn':''}">${EDIT.msg}</span>`;
   document.getElementById('eSave').onclick=saveMine;
   document.getElementById('eOff').onclick=()=>{
-    if(EDIT.dirty && !confirm('有未保存的改动,确定退出?')) return;
+    if(EDIT.dirty&&!confirm('有未保存的改动，确定退出？')) return;
     EDIT.on=false;EDIT.dirty=false;EDIT.msg='';
     load().catch(()=>{});
   };
 }
 
-document.addEventListener('click',(e)=>{
-  if(!EDIT.on || EDIT.busy) return;
-  const chip=e.target.closest('.chip[data-d]');
-  if(!chip) return;
-  const {d,c,t}=chip.dataset;
-  const m=LAST.MINE;
+document.addEventListener('click',e=>{
+  if(!EDIT.on||EDIT.busy) return;
+  const s=e.target.closest('.slot[data-d]');
+  if(!s) return;
+  const {d,c,t}=s.dataset,m=LAST.MINE;
   m[d]=m[d]||{};
-  const slots=new Set(m[d][c]||[]);
-  slots.has(t) ? slots.delete(t) : slots.add(t);
-  m[d][c]=[...slots].sort();
+  const set=new Set(m[d][c]||[]);
+  set.has(t)?set.delete(t):set.add(t);
+  m[d][c]=[...set].sort();
   if(!m[d][c].length) delete m[d][c];
   if(!Object.keys(m[d]).length) delete m[d];
   EDIT.dirty=true;EDIT.msg='';
@@ -447,7 +422,7 @@ async function saveMine(){
   const content=btoa(String.fromCharCode(...new TextEncoder().encode(text)));
   try{
     let saved=false;
-    for(let attempt=0;attempt<2 && !saved;attempt++){
+    for(let attempt=0;attempt<2&&!saved;attempt++){
       const cur=await fetch(`${api}?ref=main&t=${Date.now()}`,{headers,cache:'no-store'});
       if(cur.status===401||cur.status===403) throw new Error('令牌无效或权限不足');
       if(!cur.ok) throw new Error('读取失败 '+cur.status);
@@ -458,7 +433,7 @@ async function saveMine(){
       if(res.ok){saved=true;break;}
       if(res.status!==409) throw new Error('保存失败 '+res.status);
     }
-    if(!saved) throw new Error('保存冲突,请再试一次');
+    if(!saved) throw new Error('保存冲突，请再试一次');
     EDIT.dirty=false;
     EDIT.msg='✓ 已保存 · 页面约 1 分钟后更新';
   }catch(err){
@@ -480,13 +455,12 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
 function renderRefreshBar(){
   const bar=document.getElementById('refreshbar');
-  if(!bar) return;
   const stamp=LAST&&LAST.gen?new Date(LAST.gen).toLocaleString('zh-CN',
     {timeZone:'Australia/Sydney',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
   const label=RF.busy?'刷新中…':(EDIT.token?'↻ 从源站刷新':'↻ 重新加载');
-  const note=[RF.msg, stamp&&`数据快照 ${stamp}`, !EDIT.token&&'从源站刷新需先在本设备打开 #edit 登录']
-    .filter(Boolean).join(' · ');
+  const note=[RF.msg,!EDIT.token&&'从源站刷新需先在本设备打开 #edit 登录'].filter(Boolean).join(' · ');
   bar.innerHTML=`<button id="rBtn" class="go" ${RF.busy||EDIT.on?'disabled':''}>${label}</button>
+    ${stamp?`<span class="stamp">🔄 最后刷新：${stamp}</span>`:''}
     <span class="note${RF.msg.startsWith('✗')?' warn':''}">${note}</span>`;
   document.getElementById('rBtn').onclick=EDIT.token?refreshFromSource:()=>{
     RF.msg='';load().catch(e=>{RF.msg='✗ '+e.message;renderRefreshBar();});
@@ -494,7 +468,7 @@ function renderRefreshBar(){
 }
 
 async function refreshFromSource(){
-  RF.busy=true;RF.msg='已触发,正在排队…';renderRefreshBar();
+  RF.busy=true;RF.msg='已触发，正在排队…';renderRefreshBar();
   const api=`https://api.github.com/repos/${REPO}/actions`;
   const headers={Authorization:'Bearer '+EDIT.token,Accept:'application/vnd.github+json'};
   const since=Date.now();
@@ -502,7 +476,7 @@ async function refreshFromSource(){
     const r=await fetch(`${api}/workflows/${WORKFLOW}/dispatches`,{method:'POST',
       headers:{...headers,'Content-Type':'application/json'},
       body:JSON.stringify({ref:'main',return_run_details:true})});
-    if(r.status===401||r.status===403||r.status===404) throw new Error('令牌没有 Actions 读写权限(见 README)');
+    if(r.status===401||r.status===403||r.status===404) throw new Error('令牌没有 Actions 读写权限（见 README）');
     if(!r.ok) throw new Error('触发失败 '+r.status);
     let runId=null;
     if(r.status===200){try{runId=(await r.json()).workflow_run_id||null;}catch{}}
@@ -522,11 +496,11 @@ async function refreshFromSource(){
       if(!g.ok) continue;
       run=await g.json();
       if(run.status==='completed') break;
-      RF.msg=run.status==='in_progress'?'正在从源站抓取 16 片场…':'已触发,正在排队…';
+      RF.msg=run.status==='in_progress'?'正在从源站抓取 16 片场…':'已触发，正在排队…';
       renderRefreshBar();
     }
-    if(!run||run.status!=='completed') throw new Error('等了 5 分钟还没完成,稍后再看');
-    if(run.conclusion!=='success') throw new Error('抓取失败('+run.conclusion+')');
+    if(!run||run.status!=='completed') throw new Error('等了 5 分钟还没完成，稍后再看');
+    if(run.conclusion!=='success') throw new Error('抓取失败（'+run.conclusion+'）');
     await load(true);
     RF.msg='✓ 已从源站更新';
   }catch(err){
@@ -540,13 +514,14 @@ function initEdit(){
   if(location.hash==='#edit'){
     history.replaceState(null,'',location.pathname+location.search);
     if(!EDIT.token){
-      const t=prompt('粘贴 GitHub fine-grained 令牌(只给本仓库 Contents + Actions 读写权限):','');
-      if(t && t.trim()){EDIT.token=t.trim();localStorage.setItem('pb_token',EDIT.token);}
+      const t=prompt('粘贴 GitHub fine-grained 令牌（只给本仓库 Contents + Actions 读写权限）：','');
+      if(t&&t.trim()){EDIT.token=t.trim();try{localStorage.setItem('pb_token',EDIT.token);}catch{}}
     }
     if(EDIT.token) EDIT.on=true;
   }
   if(location.hash==='#forget'){
-    localStorage.removeItem('pb_token');EDIT.token='';EDIT.on=false;
+    try{localStorage.removeItem('pb_token');}catch{}
+    EDIT.token='';EDIT.on=false;
     history.replaceState(null,'',location.pathname+location.search);
     alert('已清除这台设备上的令牌。');
   }
@@ -554,7 +529,7 @@ function initEdit(){
 initEdit();
 
 load().catch(e=>{
-  document.getElementById('board').innerHTML = `<div class="err">数据加载失败:${e.message}</div>`;
+  document.getElementById('panel').innerHTML=`<div class="err">数据加载失败：${e.message}</div>`;
 });
 </script>
 </body>
