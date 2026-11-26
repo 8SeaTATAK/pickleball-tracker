@@ -106,15 +106,18 @@ GET https://go.mindbodyonline.com/book/widgets/appointments/view/7b9803fef1/sche
 Header: RSC: 1
 ```
 
-在响应文本里找 `initialAvailabilityData":`，用括号配对截出后面的 JSON 对象，再 `JSON.parse`。结构是 `{ "YYYY-MM-DD": { "Morning":[{time,...}], "Afternoon":[...], "Evening":[...] } }`，用 `time.slice(11,16)` 取 `HH:MM`。**列出来的是可订的格子**，没列出来的就是已被订。
+在响应文本里找 `initialAvailabilityData":`，用括号配对截出后面的 JSON 对象，再 `JSON.parse`。结构是 `{ "YYYY-MM-DD": { "Morning":[{time,...}], "Afternoon":[...], "Evening":[...] } }`，用 `time.slice(11,16)` 取 `HH:MM`。每个格子形如 `{"time":"…T19:30:00","endTimeByStaffId":{"100000025":"…T20:00:00",…}}`。**注意：不管请求哪个 staffId，接口都会返回所有场地的空格**，`endTimeByStaffId` 里列出的 staffId 才是这个时段真正有空的场。所以某场某时段可订 = 该时段存在**且** `endTimeByStaffId` 里有这片场的 staffId。只看时段存不存在会把别的场的空格算到这片场头上（2026-11 曾因此把已订满的 Ct1 显示成可订）。
 
 快速核对某场某天的可订格子：
 
 ```
-curl -sS -H 'RSC: 1' '<上面的 URL>' | grep -oE '"time":"2026-10-30T(19|2[01]):[03]0' | sed 's/.*T//' | sort -u
+STAFF=100000153; DAY=2026-10-30
+curl -sS -H 'RSC: 1' '<上面的 URL，staffId 换成 $STAFF>' \
+  | grep -oE "\"time\":\"${DAY}T(19|2[01]):[03]0:00\",\"endTimeByStaffId\":\{[^}]*\}" \
+  | grep "\"$STAFF\"" | cut -c20-24 | sort -u
 ```
 
-**一定要带上 `"time":"` 前缀。** 每个可订格子在数据里还有一个结束时间（`endTimeByStaffId`）。只 grep 日期的话，会把结束时间也算进去，比如 19:30 可订时，20:00 会被误报成可订。这个 bug 曾经让几笔已经订上的预订被误报为「还没订成」。最准确的核对方法是运行 `node scrape.mjs`，再拿 `data/availability.json` 和 `mine.json` 对比。
+**两个过滤都不能省：** 只 grep 日期会把结束时间也当成可订；不按 staffId 过滤会把别的场的空格算进来。最准确的核对方法是运行 `node scrape.mjs`，再拿 `data/availability.json` 和 `mine.json` 对比。
 
 源站响应没有 CORS 头，所以浏览器不能直接抓，只能靠 `scrape.mjs`（本地或 Actions）。
 

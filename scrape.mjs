@@ -74,7 +74,12 @@ async function main() {
         ...(parts.Evening || []),
         ...(parts.Night || []),
       ];
-      const times = all.map((s) => s.time.slice(11, 16)).filter((t) => keep(date, t));
+      // The endpoint returns every court's openings no matter which staffId is
+      // asked for; endTimeByStaffId names the courts actually free at that time.
+      const times = all
+        .filter((s) => !s.endTimeByStaffId || staffId in s.endTimeByStaffId)
+        .map((s) => s.time.slice(11, 16))
+        .filter((t) => keep(date, t));
       if (times.length) {
         byDate[date] = byDate[date] || {};
         byDate[date][name] = times;
