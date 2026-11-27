@@ -120,6 +120,15 @@
 
 ---
 
-## 7. 付完款之后
+## 7. 付完款之后：更新页面
 
-Victor 付完款，会把确认单发给 Claude，由 Claude 更新 `data/mine.json` 和页面。你**不用改仓库里的任何文件**。
+Victor 付完款后，把预订记进 `data/mine.json`，页面（https://8seatatak.github.io/pickleball-tracker/ ）约 1 分钟后显示紫色 ✓。
+
+- 在**工作副本** `%USERPROFILE%\pickleball-work` 里改，不要动同步副本 `%USERPROFILE%\pickleball-tracker`（它只负责 `git pull`，改了会卡住）。
+- 完全按仓库根目录 `AGENTS.md` 的规则做，特别是：
+  - 第 3 节：先确认悉尼日期，`git pull origin main --ff-only`，在已有内容上合并，不要覆盖。
+  - 第 4 节：格式和换算（每个半小时格写开始时间，24 小时制）。
+  - 第 6 节 A：用第 7 节的命令核对源站，提交信息例如 `Add 11/30 bookings: Premium Ct1 8-10pm`。
+- 只改 `data/mine.json`。不碰 `history.json`、`availability.json`、`index.html`、`scrape.mjs`。
+- 推送被拒（别人刚推过）：`git pull --rebase origin main` 后再推，不要 force push。
+- 推送前把改动的 diff 给 Victor 看一眼。
