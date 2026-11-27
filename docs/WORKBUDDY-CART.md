@@ -11,8 +11,8 @@
 1. **只加购物车，不付款。** 不点 Pay、Checkout、Complete、Confirm、Submit、Book now、Place order 这类付款或提交订单的按钮。到了结账页就停。
 2. **不碰支付信息。** 不新增、删除、修改账户里的支付方式，不切换默认卡，不输入任何卡号。需要说明用哪张卡时，只说卡类型和尾号。
 3. **不输密码。** 页面要求登录（Sign in / Log in to Continue）时，停下来请 Victor 自己在窗口里登录，登好了再继续。
-   - 预订页 `go.mindbodyonline.com` 和 Tennis World 品牌站 `cart.mindbodyonline.com` 是**两套独立的登录**，品牌站登录了不代表预订页也登录了。
-   - 预订页没登录时，点 Add to Cart 只会弹出 Mindbody 登录窗（`signin.mindbodyonline.com`），不会加购物车。程序点击打不开这个弹窗，要 Victor 自己在预订页点右上角 **My Account** 或 **Add to Cart** 登录。
+   - **一律从官网 https://www.tennisworldonline.com.au/bookacourt/ 进去**，在页面里嵌的预订组件上操作。这个组件的登录状态只在官网页面里有效；直接打开 `go.mindbodyonline.com/...` 的链接是另一套登录，不要这样用。
+   - 没登录时点 Add to Cart 只会弹出 Mindbody 登录窗，不会加购物车。请 Victor 自己点组件里的 **My Account** 登录。
    - 不要去 `cart.mindbodyonline.com` 品牌站上操作，那里有付款组件。
 4. **只用专用 Chrome。** 只连 `127.0.0.1:9222` 这个由 `scripts/windows/tennisworld-chrome.bat` 打开的实例。连不上就告诉 Victor 先运行这个脚本，不要去连别的浏览器，也不要自己改启动参数。
 5. **不擅自替换。** 要的时段或场地没有了，就跳过并报告，不要自己换时间、换日期、换场地。只有 Victor 事先说了「没有就换 X」才能换。
@@ -28,44 +28,38 @@
 
 你要先整理成一张清单，**发给他确认后再动手**：
 
-| 日期 | 场地 | 时间 | 格数 | 小计 |
+| 日期 | 场地 | 时间 | 时长 | 价格 |
 |---|---|---|---|---|
-| 2026-11-29 周日 | Ct3 | 7:00–9:00 PM | 4 | A$70.00 |
+| 2026-11-29 周日 | Ct3 | 7:00–9:00 PM | 120 分钟 | A$70.00 |
 
 - 日期一律按**悉尼时间**算。他说「今晚」「周五」时，先确认悉尼今天是几号再推算。
-- 价格：Premium（Ct1–4）每 30 分钟 A$17.50，Standard（Ct5–16）每 30 分钟 A$15。60 分钟的价格就是两格加起来，所以都按 30 分钟一格加购物车，不用找 60 分钟的服务。
+- 价格：Premium（Ct1–4）每 30 分钟 A$17.50，Standard（Ct5–16）每 30 分钟 A$15。以结账页显示的为准。
 - 他没指定场地时，挑法见第 4 节。
 
 ---
 
-## 3. 每片场的预订页面
+## 3. 预订组件的结构
 
-每片场有一个直达页面，地址格式：
+入口：https://www.tennisworldonline.com.au/bookacourt/ ，页面中间嵌着 Mindbody 预订组件（iframe，地址以 `go.mindbodyonline.com/book/widgets/appointments/view/7b9803fef1` 开头）。
 
-```
-https://go.mindbodyonline.com/book/widgets/appointments/view/7b9803fef1/schedule?locationId=1&serviceId={SVC}&staffId={STAFF}
-```
+组件里依次是：
 
-| 场地 | 页面上显示的名字 | serviceId | staffId |
-|---|---|---|---|
-| Ct1 | Premium Pickleball Court 1 | 132 | 100000022 |
-| Ct2 | Premium Pickleball Court 2 | 132 | 100000023 |
-| Ct3 | Premium Pickleball Court 3 | 132 | 100000024 |
-| Ct4 | Premium Pickleball Court 4 | 132 | 100000025 |
-| Ct5 | Standard PB Ct 5 | 120 | 100000152 |
-| Ct6 | Standard PB Ct 6 | 120 | 100000153 |
-| Ct7 | Standard PB Ct 7 | 120 | 100000154 |
-| Ct8 | Standard PB Ct 8 | 120 | 100000155 |
-| Ct9 | Standard PB Ct 9 | 120 | 100000156 |
-| Ct10 | Standard PB Ct10 | 120 | 100000157 |
-| Ct11 | Standard PB Ct11 | 120 | 100000158 |
-| Ct12 | Standard PB Ct12 | 120 | 100000159 |
-| Ct13 | Standard PB Ct13 | 120 | 100000162 |
-| Ct14 | Standard PB Ct14 | 120 | 100000163 |
-| Ct15 | Standard PB Ct15 | 120 | 100000164 |
-| Ct16 | Standard PB Ct16 | 120 | 100000165 |
+1. **服务列表**：Court Hire 下有 Basketball、**Premium Pickleball**、**Standard Pickleball**、Tennis，每项点 **Show** 展开。
+2. **时长**：展开后有 30 / 60 / 90 / 120 分钟四种，点对应的 **Select**。
+   - Premium：`Pickleball Premium - 30 mins` / `60 mins` / `90 mins` / `120 mins`
+   - Standard：`Pickleball 30 minutes` / `60 Minutes` 等（以页面为准）
+3. **加购页（Enhance your service）**：球拍租赁之类的附加项。**一律点 Continue with no add-ons**，不要加任何附加项。
+4. **选场地（Select your provider）**：点具体场地名，**不要选 First Available**（会随机分配场地），然后点 **Continue**。
+5. **选日期和时间**：顶部日期条点日期，下面 Morning / Afternoon / Evening 里点开始时间。
+6. 右侧 **BOOKING SUMMARY** 核对后点 **Add to Cart**。
 
-serviceId 132 是「Pickleball Premium - 30 mins」，120 是「Pickleball 30 minutes」。
+场地在页面上的名字：
+
+| 场地 | 页面上的名字 |
+|---|---|
+| Ct1–Ct4 | Premium Pickleball Court 1 … Court 4 |
+| Ct5–Ct9 | Standard PB Ct 5 … Ct 9（Ct 和数字之间有空格） |
+| Ct10–Ct16 | Standard PB Ct10 … Ct16（没有空格） |
 
 ---
 
@@ -82,26 +76,33 @@ serviceId 132 是「Pickleball Premium - 30 mins」，120 是「Pickleball 30 mi
 
 ---
 
-## 5. 加购物车的步骤（每一格都这样做）
+## 5. 加购物车的步骤
 
-1. 打开这片场的预订页（第 3 节）。
-2. 在顶部日期条点目标日期。页面会显示「Availability for <日期>」。
-3. 在 Morning / Afternoon / Evening 里点开始时间，比如 `7:00 PM`。**页面上没有这个时间，就是这片场这个时段已经被订了**，记下来，跳过。
-4. **核对右侧 BOOKING SUMMARY**，三样都要对：
+**按整段时长加**：一片场要 7:00–9:00，就选 120 分钟的服务、开始时间 7:00 PM，一次加进去。页面只会列出整段都空的开始时间。整段加不了（比如中间有一格被占），就报告给 Victor，不要自己拆成几段。
+
+每一笔都这样做：
+
+1. 打开 https://www.tennisworldonline.com.au/bookacourt/ ，滚到预订组件（之后可以在组件里点 **Back** 回到服务列表，不用每次重开）。
+2. 展开 Premium Pickleball 或 Standard Pickleball，选对应时长的 **Select**。
+3. 加购页点 **Continue with no add-ons**。
+4. 选具体场地 → **Continue**。
+5. 日期条点目标日期，确认显示「Availability for <日期>」。
+6. 点开始时间。**页面上没有这个时间，就是这片场这段时间不能整段订**，记下来，跳过这一笔。
+7. **核对右侧 BOOKING SUMMARY**，四样都要对：
+   - 服务名和时长，比如 `Pickleball Premium - 120 mins`
    - 日期，比如 `Sun, Nov 29`
-   - 时间，比如 `7:00 pm–7:30 pm`
-   - 场地名，比如 `Premium Pickleball Court 3`（要和第 3 节表里的名字一致）
+   - 时间，比如 `7:00 pm–9:00 pm`
+   - 场地名，比如 `Premium Pickleball Court 3`
 
-   任何一样不对，不要点，回到第 2 步重新选。
-5. 点 **Add to Cart**。
-6. 下一个半小时格，回到第 1 步。同一片场连续几格就重复几次。
+   任何一样不对，不要点，重新选。
+8. 点 **Add to Cart**。每加成功一笔，简单报一句，比如「✓ Ct3 7:00–9:00」。
 
 全部加完后：
 
-7. 打开购物车，把里面**每一项**列给 Victor（日期、场地、开始–结束时间、价格），算合计。
-8. 告诉他哪些没加上、为什么（比如「Ct4 8:30 已被订」）。
-9. 告诉他结账页默认选的是哪张卡（只说类型和尾号）。
-10. **停下。** 说一句「已加入购物车，请你核对后自己付款」。
+9. 打开购物车，把里面**每一项**列给 Victor（日期、场地、开始–结束时间、价格），算合计。
+10. 告诉他哪些没加上、为什么（比如「Ct4 8:30 已被订，7:00–9:00 无法整段订」）。
+11. 告诉他结账页默认选的是哪张卡（只说类型和尾号）。
+12. **停下。** 说一句「已加入购物车，请你核对后自己付款」。
 
 ---
 
