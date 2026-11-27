@@ -11,6 +11,9 @@
 1. **只加购物车，不付款。** 不点 Pay、Checkout、Complete、Confirm、Submit、Book now、Place order 这类付款或提交订单的按钮。到了结账页就停。
 2. **不碰支付信息。** 不新增、删除、修改账户里的支付方式，不切换默认卡，不输入任何卡号。需要说明用哪张卡时，只说卡类型和尾号。
 3. **不输密码。** 页面要求登录（Sign in / Log in to Continue）时，停下来请 Victor 自己在窗口里登录，登好了再继续。
+   - 预订页 `go.mindbodyonline.com` 和 Tennis World 品牌站 `cart.mindbodyonline.com` 是**两套独立的登录**，品牌站登录了不代表预订页也登录了。
+   - 预订页没登录时，点 Add to Cart 只会弹出 Mindbody 登录窗（`signin.mindbodyonline.com`），不会加购物车。程序点击打不开这个弹窗，要 Victor 自己在预订页点右上角 **My Account** 或 **Add to Cart** 登录。
+   - 不要去 `cart.mindbodyonline.com` 品牌站上操作，那里有付款组件。
 4. **只用专用 Chrome。** 只连 `127.0.0.1:9222` 这个由 `scripts/windows/tennisworld-chrome.bat` 打开的实例。连不上就告诉 Victor 先运行这个脚本，不要去连别的浏览器，也不要自己改启动参数。
 5. **不擅自替换。** 要的时段或场地没有了，就跳过并报告，不要自己换时间、换日期、换场地。只有 Victor 事先说了「没有就换 X」才能换。
 6. **Victor 说「我要付款了」之后，停止一切浏览器操作，**直到他说「付完了」。
