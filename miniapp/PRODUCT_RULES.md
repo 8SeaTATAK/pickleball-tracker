@@ -135,7 +135,7 @@
 - **上报**：俱乐部比赛的比分能否提交给 DUPR 计分（俱乐部 / 赛事组织方资质、审核流程）。
 - **要查清**：DUPR 有没有公开 API 或合作伙伴计划、申请条件和费用；授权方式（OAuth 还是别的）；接口能否从微信云函数访问（境内访问海外接口）；数据使用和隐私条款（含微信隐私保护指引要补什么）；Pickleball Australia 俱乐部有没有现成的接入渠道。
 - **调研结果**：见 `docs/dupr-research.md`（2026-11-23）。
-- **进度**：2026-11-24 已提交 DUPR Club 申请（TATA Pickleball，类型 Group / Association，场地 Ryde Multisport & Racquet Centre），DUPR 说 3–5 个工作日审核。补充说明里已提到以后想申请 API 合作。
+- **进度**：2026-11-24 已提交 DUPR Club 申请（TATA Pickleball，类型 Group / Association，场地 Ryde Multisport & Racquet Centre），DUPR 说 3–5 个工作日审核。补充说明里已提到以后想申请 API 合作。**2026-11-27 已获批，TATA Pickleball 成为 DUPR Club。**
 - **产出**：一份结论（能做什么、要申请什么、预计工作量），再决定是否排期。没打通之前，界面里继续写「俱乐部评分」，不说「DUPR」。
 
 ### 13. 活动类型：普通 Social / DUPR 计分场（2026-11-24 提出）
