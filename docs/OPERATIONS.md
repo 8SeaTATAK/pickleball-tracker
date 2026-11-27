@@ -241,6 +241,7 @@
    - 创建计划任务「Pickleball Sync」，每 30 分钟运行一次 `git pull`
 3. 想看的时候双击 `open-page.bat`：先同步一次，再在浏览器里打开 http://localhost:8000 。
 4. 停止同步：`schtasks /delete /tn "Pickleball Sync" /f`。
+5. 让 WorkBuddy 自动加购物车：双击 `tennisworld-chrome.bat`，它会打开一个专用的 Chrome（资料存在 `C:\TennisWorldChrome`，调试端口 9222 只对本机开放），第一次要在里面自己登录 Tennis World。WorkBuddy 按 [`docs/WORKBUDDY-CART.md`](WORKBUDDY-CART.md) 操作，只加购物车，付款由你自己点。用完关掉这个 Chrome 窗口。
 
 已知限制：用户名带中文时，后台同步可能失败；这两个脚本还没在真实的 Windows 上测过。
 

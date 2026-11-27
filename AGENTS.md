@@ -142,6 +142,10 @@ curl -sS -H 'RSC: 1' '<上面的 URL，staffId 换成 $STAFF>' \
 
 页面的显示窗口：工作日（周一到周五）19:00 以后，周末 14:00 以后。可订窗口大约提前 8 天。
 
+## 7.5 自动加购物车（WorkBuddy）
+
+Victor 用 WorkBuddy 在他电脑上的专用 Chrome 里把场地加进购物车，付款他自己点。操作规则在 [`docs/WORKBUDDY-CART.md`](docs/WORKBUDDY-CART.md)，专用 Chrome 由 `scripts/windows/tennisworld-chrome.bat` 打开。任何 AI 助手都**不能替他付款**。他付完会把确认单发给你，照第 6 节 A 更新 `mine.json`。
+
 ## 8. 安全
 
 - 页面和仓库是公开的，任何人都能看到预订和统计，但只有存了令牌的设备能改。
